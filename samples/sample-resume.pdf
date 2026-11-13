@@ -1,0 +1,44 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 809 >>
+stream
+BT /F1 11 Tf
+1 0 0 1 50 760 Tm (Jordan Lee - jordan.lee@example.edu) Tj
+1 0 0 1 50 742 Tm (Riverside State University - B.S. Computer Science, Class of 2028) Tj
+1 0 0 1 50 724 Tm (SKILLS: Python, JavaScript, React, SQL, Git, pandas) Tj
+1 0 0 1 50 706 Tm (PROJECTS) Tj
+1 0 0 1 50 688 Tm (CampusPal Support Bot - GWC Hackathon 2026 - Built a chatbot in Python) Tj
+1 0 0 1 50 670 Tm (  answering student FAQs using an LLM API; served 200 students.) Tj
+1 0 0 1 50 652 Tm (Budget Tracker Web App - React and Firebase app for tracking expenses.) Tj
+1 0 0 1 50 634 Tm (EXPERIENCE) Tj
+1 0 0 1 50 616 Tm (Math Tutor, Riverside Learning Center (2025-present)) Tj
+1 0 0 1 50 598 Tm (  Tutored 15 high school students in algebra and statistics.) Tj
+1 0 0 1 50 580 Tm (ACTIVITIES: Women in Computing club, treasurer) Tj
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000241 00000 n 
+0000001101 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+1171
+%%EOF
