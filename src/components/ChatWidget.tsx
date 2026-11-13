@@ -77,7 +77,7 @@ export default function ChatWidget() {
           aria-label="InternAgent assistant"
           className="animate-pop-in flex h-[min(34rem,calc(100vh-7rem))] w-[min(24rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-surface shadow-2xl"
         >
-          <div className="flex items-center justify-between gap-3 bg-gradient-to-r from-blue-600 to-cyan-500 px-4 py-3 text-white">
+          <div className="flex items-center justify-between gap-3 bg-blue-600 px-4 py-3 text-white">
             <div className="flex items-center gap-2.5">
               <span className="rounded-xl ring-2 ring-white/40"><LogoMark size={32} /></span>
               <div>
@@ -112,7 +112,7 @@ export default function ChatWidget() {
                 <div
                   className={`max-w-[85%] space-y-1 rounded-2xl px-3.5 py-2.5 text-sm ${
                     m.role === "user"
-                      ? "rounded-br-md bg-gradient-to-r from-blue-600 to-cyan-500 text-white"
+                      ? "rounded-br-md bg-blue-600 text-white"
                       : "rounded-tl-md bg-slate-100 text-slate-800"
                   }`}
                 >
@@ -156,7 +156,7 @@ export default function ChatWidget() {
         onClick={() => setOpen(!open)}
         aria-label={open ? "Close assistant" : "Open AI assistant"}
         aria-expanded={open}
-        className="group relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 text-white shadow-xl shadow-blue-500/30 transition hover:scale-105 active:scale-95"
+        className="group relative flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg transition hover:scale-105 active:scale-95"
       >
         {!open && <span className="absolute inset-0 animate-ping rounded-full bg-cyan-400 opacity-20" />}
         {open ? (

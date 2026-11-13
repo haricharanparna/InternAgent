@@ -5,6 +5,7 @@ import { keywordScore } from "@/lib/jobs";
 import TailorPanel from "./TailorPanel";
 import CompanyLogo from "./CompanyLogo";
 import RoleDetails from "./RoleDetails";
+import { jobFacts, skillsMentioned } from "@/lib/jobFacts";
 import { PLACE_KEY, isNear, isRemote, locateMe, placeLabel, type Place } from "@/lib/location";
 import type { Fit, Job, Profile, ScoredJob } from "@/lib/types";
 
@@ -150,7 +151,7 @@ export default function JobList({ profile, trackedIds, onTrack }: Props) {
   if (jobs.length === 0) {
     return (
       <section className="card animate-fade-up p-8 text-center">
-        <p className="text-lg font-bold text-slate-900">Ready to find your internships</p>
+        <h2 className="text-2xl font-medium text-slate-900">Ready to find your internships</h2>
         <p className="mx-auto mt-1 max-w-md text-sm text-slate-500">
           We&apos;ll search thousands of live internships from official company job boards and the community-run SimplifyJobs list.
         </p>
@@ -181,7 +182,7 @@ export default function JobList({ profile, trackedIds, onTrack }: Props) {
 
   return (
     <section className="space-y-4">
-      <div className="card sticky top-[61px] z-30 flex flex-wrap items-center gap-3 p-3">
+      <div className="sticky top-[var(--header-h)] z-30 -mx-4 flex flex-wrap items-center gap-3 border-b border-slate-200 bg-[var(--page-bg)] px-4 py-3">
         <div className="relative min-w-0 basis-full sm:basis-0 sm:flex-1">
           <svg className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.2" strokeLinecap="round">
             <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
@@ -190,7 +191,7 @@ export default function JobList({ profile, trackedIds, onTrack }: Props) {
             value={query}
             onChange={(e) => { setQuery(e.target.value); setShown(PAGE); }}
             placeholder="Filter by title, company, or city"
-            className="w-full rounded-xl border border-slate-200 bg-surface py-2 pl-9 pr-3 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+            className="w-full rounded-md border border-slate-300 bg-surface py-2 pl-9 pr-3 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
           />
         </div>
         <button onClick={findJobs} disabled={!!loading} className="btn-secondary" title="Refresh postings">↻</button>
@@ -211,7 +212,7 @@ export default function JobList({ profile, trackedIds, onTrack }: Props) {
             <button
               key={w}
               onClick={() => { setWhere(w); setShown(PAGE); }}
-              className={`chip px-3 py-1.5 text-sm transition ${where === w ? "bg-blue-600 text-white shadow-sm" : "bg-surface text-slate-600 ring-1 ring-slate-200 hover:ring-slate-300"}`}
+              className={`rounded-md border px-3 py-1.5 text-sm transition ${where === w ? "border-blue-600 bg-blue-600 text-white" : "border-slate-300 bg-surface text-slate-700 hover:border-slate-400"}`}
             >
               {label}
             </button>
@@ -222,13 +223,13 @@ export default function JobList({ profile, trackedIds, onTrack }: Props) {
             Forget my location
           </button>
         ) : (
-          <button onClick={useMyLocation} disabled={locating} className="chip bg-blue-50 px-3 py-1.5 text-sm text-blue-700 ring-1 ring-blue-100 hover:bg-blue-100">
+          <button onClick={useMyLocation} disabled={locating} className="rounded-md border border-blue-300 px-3 py-1.5 text-sm text-blue-700 hover:bg-blue-50">
             {locating ? "Finding you…" : "📍 Use my location"}
           </button>
         )}
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-sm text-slate-500">
+      <div className="flex flex-wrap items-center justify-between gap-2 pt-2 text-sm text-slate-500">
         <span>
           <b className="text-slate-800">{visible.length}</b> internships from <b className="text-slate-800">{companies}</b> companies
         </span>
@@ -236,63 +237,97 @@ export default function JobList({ profile, trackedIds, onTrack }: Props) {
       </div>
       {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
-      <ul className="space-y-3">
+      <ul className="divide-y divide-slate-200 border-y border-slate-200">
         {visible.slice(0, shown).map((j, i) => {
           const tracked = trackedIds.has(j.id);
+          const f = jobFacts(j);
+          const mine = skillsMentioned(j, profile.skills);
+          const meta = [
+            f.pay && `💵 ${f.pay}`,
+            f.degrees && `🎓 ${f.degrees}`,
+            f.sponsorship && `🛂 Visa: ${f.sponsorship}`,
+          ].filter(Boolean) as string[];
           return (
-            <li key={j.id} style={{ animationDelay: `${Math.min(i % PAGE, 10) * 45}ms` }} className="card animate-fade-up p-5 hover:-translate-y-0.5 hover:shadow-lg">
+            <li key={j.id} style={{ animationDelay: `${Math.min(i % PAGE, 10) * 40}ms` }} className="animate-fade-up py-6">
               <div className="flex items-start gap-4">
-                <CompanyLogo company={j.company} url={j.url} />
+                <CompanyLogo company={j.company} url={j.url} size={48} />
                 <div className="min-w-0 flex-1">
-                  <h3 className="font-bold leading-snug text-slate-900">{j.title}</h3>
-                  <p className="mt-0.5 text-sm text-slate-500">
-                    <span className="font-medium text-slate-700">{j.company}</span> · 📍 {j.location}
-                  </p>
-                </div>
-                {j.fit ? (
-                  <ScoreRing score={j.fit.score} />
-                ) : (
-                  <span className="chip shrink-0 bg-slate-100 text-slate-500">Not scored</span>
-                )}
-              </div>
-
-              {j.fit && (
-                <div className="animate-fade-in mt-4 rounded-xl bg-slate-50 p-3.5 text-sm">
-                  <p className="text-slate-700">{j.fit.reason}</p>
-                  <div className="mt-2.5 flex flex-wrap gap-1.5">
-                    {j.fit.matched.map((m) => (
-                      <span key={m} className="chip bg-emerald-100/70 text-emerald-800">✓ {m}</span>
-                    ))}
-                    {j.fit.missing.map((m) => (
-                      <span key={m} className="chip bg-amber-100/70 text-amber-900">✗ {m}</span>
-                    ))}
+                  <div className="flex flex-wrap items-center gap-1.5 text-sm">
+                    <span className="mr-1 font-semibold text-slate-700">{j.company}</span>
+                    <span className="tag tag-accent">{f.sourceLabel}</span>
+                    {f.category && <span className="tag tag-soft">{f.category}</span>}
+                    {f.workplace && <span className="tag tag-soft">{f.workplace}</span>}
                   </div>
+                  <h3 className="mt-2 text-xl font-medium leading-snug text-slate-900">{j.title}</h3>
+                  {f.snippet ? (
+                    <p className="mt-1.5 text-[15px] leading-relaxed text-slate-600">{f.snippet}</p>
+                  ) : (
+                    <p className="mt-1.5 text-sm text-slate-500">
+                      This listing only includes the title, location and term. Open <b className="font-medium text-slate-600">About this role</b> for an explanation.
+                    </p>
+                  )}
+                  <p className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-700">
+                    <span>📍 {f.where}</span>
+                    {f.term && <><span className="text-slate-300">·</span><span>🗓️ {f.term}</span></>}
+                    {f.domain && (
+                      <>
+                        <span className="text-slate-300">·</span>
+                        <a href={j.url} target="_blank" rel="noreferrer" className="text-slate-700 underline decoration-slate-300 underline-offset-4 hover:text-blue-600 hover:decoration-blue-400">
+                          {f.domain} ↗
+                        </a>
+                      </>
+                    )}
+                  </p>
+                  {mine.length > 0 && (
+                    <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                      <span className="mr-0.5 text-xs text-slate-500">Mentions your skills:</span>
+                      {mine.map((m) => <span key={m} className="tag">{m}</span>)}
+                    </div>
+                  )}
+                  {meta.length > 0 && (
+                    <p className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-slate-500">
+                      {meta.map((m) => <span key={m}>{m}</span>)}
+                    </p>
+                  )}
+
+                  {j.fit && (
+                    <div className="animate-fade-in mt-4 border-l-2 border-blue-500 pl-3.5 text-sm">
+                      <p className="sm:hidden">
+                        <b className={scoreTone(j.fit.score).text}>{j.fit.score}/100 · {scoreTone(j.fit.score).label}</b>
+                      </p>
+                      <p className="text-slate-700">{j.fit.reason}</p>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {j.fit.matched.map((m) => (
+                          <span key={m} className="chip bg-emerald-100/70 text-emerald-800">✓ {m}</span>
+                        ))}
+                        {j.fit.missing.map((m) => (
+                          <span key={m} className="chip bg-amber-100/70 text-amber-900">✗ {m}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="mt-4 flex flex-wrap items-center gap-2">
+                    <button onClick={() => setTailoring(j)} className="btn-primary px-4 py-2">✍️ Tailor my resume</button>
+                    <button
+                      onClick={() => onTrack(j)}
+                      disabled={tracked}
+                      className={`btn-secondary ${tracked ? "border-emerald-300 bg-emerald-50 text-emerald-700 disabled:opacity-100" : ""}`}
+                    >
+                      {tracked ? "✓ Saved" : "＋ Save to tracker"}
+                    </button>
+                    <button onClick={() => toggleInfo(j.id)} aria-expanded={infoOpen.has(j.id)} className="btn-secondary">
+                      About this role
+                      <svg className={`transition-transform ${infoOpen.has(j.id) ? "rotate-180" : ""}`} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="m6 9 6 6 6-6" /></svg>
+                    </button>
+                  </div>
+
+                  {infoOpen.has(j.id) && <RoleDetails job={j} />}
                 </div>
-              )}
-
-              <div className="mt-4 flex flex-wrap items-center gap-2">
-                <button onClick={() => setTailoring(j)} className="btn-primary px-4 py-2">✍️ Tailor my resume</button>
-                <button
-                  onClick={() => onTrack(j)}
-                  disabled={tracked}
-                  className={`btn-secondary ${tracked ? "border-emerald-200 bg-emerald-50 text-emerald-700 disabled:opacity-100" : ""}`}
-                >
-                  {tracked ? "✓ Saved" : "＋ Save to tracker"}
-                </button>
-                <button
-                  onClick={() => toggleInfo(j.id)}
-                  aria-expanded={infoOpen.has(j.id)}
-                  className="btn-secondary"
-                >
-                  ℹ️ About this role
-                  <svg className={`transition-transform ${infoOpen.has(j.id) ? "rotate-180" : ""}`} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="m6 9 6 6 6-6" /></svg>
-                </button>
-                <a href={j.url} target="_blank" rel="noreferrer" className="ml-auto text-sm font-semibold text-blue-600 hover:text-blue-800">
-                  View posting →
-                </a>
+                <div className="hidden sm:block">
+                  {j.fit ? <ScoreRing score={j.fit.score} /> : <span className="tag tag-soft whitespace-nowrap">Not scored</span>}
+                </div>
               </div>
-
-              {infoOpen.has(j.id) && <RoleDetails job={j} />}
             </li>
           );
         })}

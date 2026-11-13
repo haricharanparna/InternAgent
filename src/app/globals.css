@@ -2,37 +2,60 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Editorial look: warm paper, ink text, a blue accent, serif
+   headlines, hairline rules and small radii. The slate utility classes
+   used across the app are remapped to warm neutrals here, so components pick up
+   the palette without touching every class name. */
 @theme {
-  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-public), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-newsreader), Georgia, "Times New Roman", serif;
   --color-surface: #ffffff;
+  --radius-lg: 6px;
+  --radius-xl: 6px;
+  --radius-2xl: 8px;
+  --radius-3xl: 10px;
 }
 
 :root {
   color-scheme: light;
-  --page-bg: #f6f8fc;
-  --glow-a: rgb(37 99 235 / 0.12);
-  --glow-b: rgb(6 182 212 / 0.10);
+  --page-bg: #faf8f3;
+  --btn-ink: #ffffff;
+  --header-h: 84px; /* sticky toolbar sits under the header */
+
+  --color-slate-50: #f6f3ec;
+  --color-slate-100: #f2efe7;
+  --color-slate-200: #e2ddd1;
+  --color-slate-300: #cfc8b8;
+  --color-slate-400: #8d928c;
+  --color-slate-500: #6f7671;
+  --color-slate-600: #4b534e;
+  --color-slate-700: #39403c;
+  --color-slate-800: #2a302c;
+  --color-slate-900: #1d2320;
+  --color-slate-950: #121614;
+
 }
 
 /* Dark mode mirrors Tailwind's shades (50<->950, 100<->900, ...), so every
-   existing class like bg-emerald-50 or text-slate-700 flips automatically.
-   Mid shades (400-600) stay put so the blue/cyan brand gradient keeps its punch. */
+   existing class like bg-emerald-50 or text-slate-700 flips automatically. */
 .dark {
   color-scheme: dark;
-  --page-bg: #060b18;
-  --glow-a: rgb(37 99 235 / 0.22);
-  --glow-b: rgb(6 182 212 / 0.14);
-  --color-surface: #0d1526;
-  --color-slate-50:  oklch(12.9% 0.042 264.695);
-  --color-slate-100:  oklch(20.8% 0.042 265.755);
-  --color-slate-200:  oklch(27.9% 0.041 260.031);
-  --color-slate-300:  oklch(37.2% 0.044 257.287);
-  --color-slate-700:  oklch(86.9% 0.022 252.894);
-  --color-slate-800:  oklch(92.9% 0.013 255.508);
-  --color-slate-900:  oklch(96.8% 0.007 247.896);
-  --color-slate-950:  oklch(98.4% 0.003 247.858);
-  --color-slate-400:  oklch(55.4% 0.046 257.417);
-  --color-slate-600:  oklch(70.4% 0.04 256.788);
+  --page-bg: #161917;
+  --btn-ink: #ffffff;
+  --color-surface: #1d211f;
+
+  --color-slate-50: #202422;
+  --color-slate-100: #232825;
+  --color-slate-200: #2f3531;
+  --color-slate-300: #414943;
+  --color-slate-400: #7f8681;
+  --color-slate-500: #949b96;
+  --color-slate-600: #b0b6b1;
+  --color-slate-700: #c4c9c4;
+  --color-slate-800: #dcdfd9;
+  --color-slate-900: #eceee9;
+  --color-slate-950: #f6f7f4;
+
   --color-blue-50:  oklch(28.2% 0.091 267.935);
   --color-blue-100:  oklch(37.9% 0.146 265.522);
   --color-blue-200:  oklch(42.4% 0.199 265.638);
@@ -147,30 +170,43 @@
   --color-indigo-950:  oklch(96.2% 0.018 272.314);
 }
 
+@media (min-width: 640px) {
+  :root { --header-h: 57px; }
+}
+
 body {
   color: var(--color-slate-900);
   background-color: var(--page-bg);
-  background-image:
-    radial-gradient(60rem 30rem at 10% -10%, var(--glow-a), transparent 60%),
-    radial-gradient(50rem 30rem at 100% 0%, var(--glow-b), transparent 60%);
-  background-repeat: no-repeat;
   min-height: 100vh;
 }
 
-.card {
-  @apply rounded-2xl border border-slate-200/70 bg-surface/90 shadow-[0_1px_2px_rgb(15_23_42/0.04),0_8px_24px_-12px_rgb(15_23_42/0.10)] backdrop-blur;
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
-}
-.dark .card {
-  box-shadow: 0 1px 0 rgb(255 255 255 / 0.03) inset, 0 12px 32px -16px rgb(0 0 0 / 0.6);
+h1, h2, h3, .font-serif {
+  font-family: var(--font-serif);
+  font-optical-sizing: auto;
 }
 
+.card {
+  @apply rounded-md border border-slate-200 bg-surface;
+  transition: border-color 0.15s ease;
+}
+.card:hover { border-color: var(--color-slate-300); }
+
 .btn-primary {
-  @apply inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-500/25 transition hover:-translate-y-px hover:shadow-lg hover:shadow-blue-500/30 hover:brightness-110 active:translate-y-0 active:scale-[0.98] disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:brightness-100;
+  @apply inline-flex items-center justify-center gap-2 rounded-md bg-blue-600 px-5 py-2.5 text-sm font-semibold transition hover:bg-blue-500 active:scale-[0.98] disabled:opacity-60;
+  color: var(--btn-ink);
 }
 
 .btn-secondary {
-  @apply inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-surface px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 active:scale-[0.98] disabled:opacity-60;
+  @apply inline-flex items-center justify-center gap-2 rounded-md border border-slate-300 bg-surface px-4 py-2 text-sm font-medium text-slate-800 transition hover:border-slate-400 hover:bg-slate-50 active:scale-[0.98] disabled:opacity-60;
+}
+
+/* Section heading with a rule underneath, like a newspaper section. */
+.section-title {
+  @apply flex items-end justify-between gap-3 border-b border-slate-300 pb-2 font-serif text-2xl font-medium text-slate-900;
+}
+
+.kicker {
+  @apply text-xs font-medium uppercase tracking-[0.12em] text-slate-500;
 }
 
 .chip {
@@ -277,3 +313,10 @@ html.a11y-motion *, html.a11y-motion *::before, html.a11y-motion *::after {
   animation-iteration-count: 1 !important;
   transition-duration: 0.01ms !important;
 }
+
+/* Small bordered labels on job cards. */
+.tag {
+  @apply inline-flex items-center rounded-[3px] border border-slate-300 px-2 py-px text-xs text-slate-700;
+}
+.tag-accent { @apply border-blue-500 text-blue-700; }
+.tag-soft { @apply border-transparent bg-slate-100 text-slate-600; }

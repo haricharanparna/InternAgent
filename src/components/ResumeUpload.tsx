@@ -53,16 +53,16 @@ export default function ResumeUpload({ profile, onProfile }: Props) {
   if (profile) {
     return (
       <section className="card animate-fade-up overflow-hidden">
-        <div className="animate-gradient h-16 bg-gradient-to-r from-blue-600 via-cyan-400 to-blue-600" />
+        <div className="h-14 border-b border-slate-200 bg-slate-100" />
         <div className="px-6 pb-6">
           {/* Only the avatar overlaps the banner; the text always sits below it. */}
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex min-w-0 items-start gap-4">
-              <div className="-mt-8 shrink-0 rounded-2xl bg-surface shadow-md ring-4 ring-surface">
+              <div className="-mt-8 shrink-0 rounded-lg bg-surface ring-4 ring-surface">
                 <LogoMark size={64} />
               </div>
               <div className="min-w-0 pt-3">
-                <h2 className="text-xl font-bold text-slate-900">{profile.name || "Your profile"}</h2>
+                <h2 className="text-2xl font-medium text-slate-900">{profile.name || "Your profile"}</h2>
                 <p className="text-sm text-slate-500">
                   {[profile.major, profile.school, profile.graduationYear && `Class of ${profile.graduationYear}`]
                     .filter(Boolean)
@@ -73,7 +73,7 @@ export default function ResumeUpload({ profile, onProfile }: Props) {
             <button onClick={() => onProfile(null)} className="btn-secondary mt-3">↺ New resume</button>
           </div>
 
-          <div className="mt-6 grid gap-6 sm:grid-cols-2">
+          <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 [&>*]:min-w-0">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Skills · {profile.skills.length}</p>
               <div className="mt-2 flex flex-wrap gap-1.5">
@@ -117,7 +117,7 @@ export default function ResumeUpload({ profile, onProfile }: Props) {
         dragging ? "border-blue-400 bg-blue-50/80" : "border-slate-200"
       }`}
     >
-      <div className="animate-float mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-100 to-cyan-100">
+      <div className="animate-float mx-auto flex h-14 w-14 items-center justify-center rounded-md bg-blue-50">
         {loading ? (
           <span className="h-6 w-6 animate-spin rounded-full border-[3px] border-blue-200 border-t-blue-600" />
         ) : (
@@ -127,7 +127,7 @@ export default function ResumeUpload({ profile, onProfile }: Props) {
           </svg>
         )}
       </div>
-      <p className="mt-4 text-lg font-bold text-slate-900">
+      <p className="mt-4 font-serif text-2xl text-slate-900">
         {loading ? "Reading your resume…" : "Drop your resume here"}
       </p>
       <p className="mt-1 text-sm text-slate-500">

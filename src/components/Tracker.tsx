@@ -19,7 +19,7 @@ export default function Tracker({ apps, onUpdate, onRemove, onBrowse }: Props) {
   if (apps.length === 0) {
     return (
       <section className="card p-12 text-center"><div className="text-4xl">📋</div>
-        <p className="mt-3 text-lg font-bold">No applications yet</p>
+        <p className="mt-3 font-serif text-2xl">No applications yet</p>
         <p className="mt-1 text-sm text-slate-600">Save internships from your search to track them here.</p>
         <button onClick={onBrowse} className="btn-primary mt-6">
           Find internships
@@ -43,7 +43,7 @@ export default function Tracker({ apps, onUpdate, onRemove, onBrowse }: Props) {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {stats.map((s) => (
           <div key={s.label} className="card animate-fade-up p-4">
-            <p className="bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-3xl font-extrabold text-transparent">{s.value}</p>
+            <p className="font-serif text-4xl text-slate-900">{s.value}</p>
             <p className="text-xs text-slate-500">{s.label}</p>
           </div>
         ))}

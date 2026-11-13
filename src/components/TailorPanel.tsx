@@ -40,7 +40,7 @@ export default function TailorPanel({ profile, job, onClose }: Props) {
   return (
     <div className="animate-fade-in fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/40 p-4 backdrop-blur-sm sm:p-8" onClick={onClose}>
       <div className="animate-pop-in w-full max-w-5xl overflow-hidden rounded-3xl bg-surface shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 bg-gradient-to-r from-blue-50 via-surface to-cyan-50 p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 bg-slate-50 p-5">
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">Tailored resume</p>
             <h2 className="mt-1 text-lg font-semibold">{job.title}</h2>
