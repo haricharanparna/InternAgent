@@ -2,21 +2,25 @@ import { GoogleGenAI, type Content, type GenerateContentConfig, type Part } from
 
 // Tried in order. The free tier is often overloaded, so when one model is
 // busy or slow we fall through to the next instead of failing.
-const MODELS = [
+export const MODELS = [
   ...(process.env.GEMINI_MODEL ? [process.env.GEMINI_MODEL] : []),
   "gemini-3.5-flash-lite",
   "gemini-3.1-flash-lite",
   "gemini-3.8-flash",
 ].filter((m, i, all) => all.indexOf(m) === i);
 
-const TIMEOUT_MS = 30_000;
-const RETRYABLE = [429, 500, 503, 504];
+export const TIMEOUT_MS = 30_000;
+export const RETRYABLE = [429, 500, 503, 504];
 
 let client: GoogleGenAI | null = null;
 
 function getClient() {
   if (!process.env.GEMINI_API_KEY) {
-    throw new Error("GEMINI_API_KEY is not set. Copy .env.example to .env.local and add your free key.");
+    throw new Error(
+      process.env.NODE_ENV === "production"
+        ? "The AI isn't configured on this server yet. Please try again later."
+        : "GEMINI_API_KEY is not set. Copy .env.example to .env.local and add your free key.",
+    );
   }
   client ??= new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   return client;

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { isRemote } from "@/lib/location";
 import type { Job, RoleInfo } from "@/lib/types";
+import { bumpUsage } from "@/lib/usage";
 
 // Survives closing/reopening a card, so each role is only explained once per visit.
 const cache = new Map<string, RoleInfo>();
@@ -57,6 +58,7 @@ export default function RoleDetails({ job }: { job: Job }) {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
         cache.set(job.id, data.info);
+        bumpUsage("rolesExplained");
         if (!cancelled) setInfo(data.info);
       } catch (e) {
         if (!cancelled) setError((e as Error).message || "Couldn't load details.");

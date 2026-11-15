@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { rateLimited } from "@/lib/rateLimit";
 import { generateJSON } from "@/lib/gemini";
 import type { Job, RoleInfo } from "@/lib/types";
 
@@ -57,6 +58,8 @@ const SCHEMA = {
 type Out = Omit<RoleInfo, "company"> & { companyAbout: string };
 
 export async function POST(req: Request) {
+  const limited = rateLimited(req);
+  if (limited) return limited;
   try {
     const { job } = (await req.json()) as { job: Job };
     const wiki = await companyWiki(job.company);

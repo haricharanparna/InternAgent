@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { rateLimited } from "@/lib/rateLimit";
 import { generateJSON } from "@/lib/gemini";
 import type { Profile } from "@/lib/types";
 
@@ -38,6 +39,8 @@ Rules:
 const MAX_BYTES = 5 * 1024 * 1024;
 
 export async function POST(req: Request) {
+  const limited = rateLimited(req);
+  if (limited) return limited;
   try {
     const form = await req.formData();
     const file = form.get("resume");

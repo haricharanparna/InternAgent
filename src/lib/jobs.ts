@@ -1,30 +1,29 @@
 import type { Job } from "./types";
 
 // All sources are free and public. Boards that fail to load are skipped.
-const GREENHOUSE = [
+export const GREENHOUSE = [
   "stripe", "airbnb", "databricks", "robinhood", "figma", "discord", "cloudflare", "duolingo",
   "reddit", "pinterest", "instacart", "asana", "dropbox", "coinbase", "lyft", "gitlab", "twilio",
-  "affirm", "anthropic", "scaleai", "brex", "chime", "doordash", "roblox", "samsara", "squarespace",
+  "affirm", "anthropic", "scaleai", "brex", "chime", "roblox", "samsara", "squarespace",
   "verkada", "waymo", "nuro", "datadog", "mongodb", "elastic", "okta", "toast", "gusto", "flexport",
-  "webflow", "grammarly", "airtable", "zscaler", "hubspot", "intercom", "vercel", "anduril",
-];
-const LEVER = ["palantir", "plaid", "spotify", "zoox", "whoop", "attentive"];
-const ASHBY = [
-  "openai", "ramp", "notion", "linear", "replit", "perplexity", "cohere", "mercury", "retool",
-  "posthog", "supabase", "modal", "runway", "elevenlabs", "harvey", "deel", "cursor",
+  "webflow", "airtable", "zscaler", "intercom", "vercel", ];
+export const LEVER = ["palantir", "spotify", "zoox", "whoop"];
+export const ASHBY = [
+  "openai", "ramp", "notion", "linear", "replit", "perplexity", "cohere", "mercury", "posthog", "supabase", "modal", "runway", "elevenlabs", "harvey", "deel", "cursor",
 ];
 // Community-maintained list of thousands of internships (github.com/SimplifyJobs).
-const SIMPLIFY_URL = "https://raw.githubusercontent.com/SimplifyJobs/Summer2027-Internships/dev/.github/scripts/listings.json";
+export const SIMPLIFY_URL = "https://raw.githubusercontent.com/SimplifyJobs/Summer2027-Internships/dev/.github/scripts/listings.json";
 
 const INTERN_RE = /\b(intern|internship|co-?op)\b/i;
 // Upcoming terms only; Summer 2026 and earlier have already started or passed.
-const CURRENT_TERM_RE = /202[7-9]|Fall 2026|Winter 2026/;
-const MAX_AGE_DAYS = 150;
+export const CURRENT_TERM_RE = /202[7-9]|Fall 2026|Winter 2026/;
+export const MAX_AGE_DAYS = 150;
 
 function htmlToText(html: string) {
   return html
     .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&")
+    .replace(/&mdash;|&ndash;/g, "–").replace(/&rsquo;|&lsquo;/g, "'").replace(/&[a-z]+;/g, " ")
     .replace(/<[^>]+>/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -137,9 +136,24 @@ const dedupeKey = (j: Job) =>
 let cache: { at: number; jobs: Job[] } | null = null;
 const CACHE_MS = 60 * 60 * 1000;
 
+export const CACHE_MINUTES = CACHE_MS / 60_000;
+
+// Facts about the last refresh, shown on the How it works page.
+export type JobsMeta = {
+  fetchedAt: string;
+  ms: number;
+  raw: number;
+  duplicates: number;
+  sourcesOk: number;
+  sourcesFailed: number;
+};
+let meta: JobsMeta | null = null;
+export const jobsMeta = () => meta;
+
 export async function fetchInternships(): Promise<Job[]> {
   if (cache && Date.now() - cache.at < CACHE_MS) return cache.jobs;
 
+  const started = Date.now();
   const results = await Promise.allSettled([
     ...GREENHOUSE.map(fromGreenhouse),
     ...LEVER.map(fromLever),
@@ -149,16 +163,28 @@ export async function fetchInternships(): Promise<Job[]> {
   // Company boards come first, so their richer descriptions win over Simplify duplicates.
   const seen = new Set<string>();
   const jobs: Job[] = [];
+  let raw = 0;
   for (const r of results) {
     if (r.status !== "fulfilled") continue;
     for (const j of r.value) {
+      raw++;
       const key = dedupeKey(j);
       if (seen.has(key)) continue;
       seen.add(key);
       jobs.push(j);
     }
   }
-  cache = { at: Date.now(), jobs };
+  const ok = results.filter((r) => r.status === "fulfilled").length;
+  meta = {
+    fetchedAt: new Date().toISOString(),
+    ms: Date.now() - started,
+    raw,
+    duplicates: raw - jobs.length,
+    sourcesOk: ok,
+    sourcesFailed: results.length - ok,
+  };
+  // Don't cache an empty result (e.g. every source timed out); retry next request.
+  if (jobs.length) cache = { at: Date.now(), jobs };
   return jobs;
 }
 

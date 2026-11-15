@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { rateLimited } from "@/lib/rateLimit";
 import { generateJSON } from "@/lib/gemini";
 import type { Job, Profile, TailoredResume } from "@/lib/types";
 
@@ -35,6 +36,8 @@ type ModelOutput = {
 };
 
 export async function POST(req: Request) {
+  const limited = rateLimited(req);
+  if (limited) return limited;
   try {
     const { profile, job } = (await req.json()) as { profile: Profile; job: Job };
 

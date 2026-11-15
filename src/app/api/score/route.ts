@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { rateLimited } from "@/lib/rateLimit";
 import { generateJSON } from "@/lib/gemini";
 import type { Fit, Job, Profile } from "@/lib/types";
 
@@ -28,6 +29,8 @@ const FIT_SCHEMA = {
 };
 
 export async function POST(req: Request) {
+  const limited = rateLimited(req);
+  if (limited) return limited;
   try {
     const { profile, jobs } = (await req.json()) as { profile: Profile; jobs: Job[] };
     const batch = jobs.slice(0, MAX_JOBS).map((j) => ({

@@ -8,12 +8,14 @@ import Tracker from "@/components/Tracker";
 import ThemeToggle from "@/components/ThemeToggle";
 import SettingsPanel from "@/components/SettingsPanel";
 import ChatWidget from "@/components/ChatWidget";
+import Impact from "@/components/Impact";
+import HowItWorks from "@/components/HowItWorks";
 import { followUpDue, useTracker } from "@/lib/tracker";
 import type { Profile } from "@/lib/types";
 
 const PROFILE_KEY = "internagent.profile";
 
-type Tab = "search" | "tracker";
+type Tab = "search" | "tracker" | "impact" | "how";
 
 const STATS = [
   { value: "4,600+", label: "live internships from official job boards" },
@@ -53,7 +55,7 @@ export default function Home() {
   }
 
   const tabClass = (t: Tab) =>
-    `relative -mb-px border-b-2 px-1 py-2 text-[15px] transition ${
+    `relative -mb-px shrink-0 border-b-2 px-1 py-2 text-sm transition sm:text-[15px] ${
       tab === t ? "border-blue-600 text-slate-900" : "border-transparent text-slate-600 hover:text-slate-900"
     }`;
 
@@ -65,13 +67,15 @@ export default function Home() {
           <button onClick={() => setTab("search")} aria-label="InternAgent home" className="group">
             <Logo />
           </button>
-          <nav className="order-3 flex basis-full gap-5 sm:order-2 sm:ml-auto sm:basis-auto">
+          <nav className="order-3 -mx-4 flex basis-full gap-4 overflow-x-auto whitespace-nowrap px-4 [scrollbar-width:none] sm:gap-5 sm:order-2 sm:mx-0 sm:ml-auto sm:basis-auto sm:px-0">
             <button className={tabClass("search")} onClick={() => setTab("search")}>Search</button>
             <button className={tabClass("tracker")} onClick={() => setTab("tracker")}>
               Applications
               <span className="ml-1.5 rounded-[3px] border border-slate-300 px-1.5 text-[11px] text-slate-600">{tracker.apps.length}</span>
               {dueCount > 0 && <span className="absolute -right-2 top-1 h-2 w-2 rounded-full bg-amber-500 ring-2 ring-surface" title="Follow-ups due" />}
             </button>
+            <button className={tabClass("impact")} onClick={() => setTab("impact")}>Impact</button>
+            <button className={tabClass("how")} onClick={() => setTab("how")}>How it works</button>
           </nav>
           <div className="order-2 ml-auto flex items-center gap-1.5 sm:order-3 sm:ml-0">
             <ThemeToggle />
@@ -80,7 +84,7 @@ export default function Home() {
         </div>
       </header>
 
-      <main className={`mx-auto space-y-10 px-4 py-10 ${tab === "tracker" ? "max-w-6xl" : "max-w-4xl"}`}>
+      <main className={`mx-auto space-y-10 px-4 py-10 ${tab === "tracker" ? "max-w-6xl" : tab === "search" ? "max-w-4xl" : "max-w-5xl"}`}>
         {/* Kept mounted while hidden so search results survive tab switches. */}
         <div className={tab === "search" ? "space-y-10" : "hidden"}>
           {!profile && (
@@ -122,11 +126,15 @@ export default function Home() {
               </ol>
               <p className="mt-6 rounded-md bg-blue-50 px-4 py-3 text-sm text-slate-700">
                 Curious how scores stay honest? The AI only rewords what&apos;s already on your resume, and any skill it
-                can&apos;t find there is dropped before you see it.
+                can&apos;t find there is dropped before you see it.{" "}
+                <button onClick={() => setTab("how")} className="font-medium text-blue-700 underline underline-offset-2">See the math</button>
               </p>
             </section>
           )}
         </div>
+
+        {tab === "impact" && <Impact apps={tracker.apps} onSearch={() => setTab("search")} />}
+        {tab === "how" && <HowItWorks profile={profile} />}
 
         {tab === "tracker" && (
           <Tracker apps={tracker.apps} onUpdate={tracker.update} onRemove={tracker.remove} onBrowse={() => setTab("search")} />

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { rateLimited } from "@/lib/rateLimit";
 import { generateText } from "@/lib/gemini";
 import type { Profile } from "@/lib/types";
 
@@ -19,6 +20,8 @@ Rules:
 - You can't see job postings unless the user pastes them, and you can't apply to jobs for the user.`;
 
 export async function POST(req: Request) {
+  const limited = rateLimited(req);
+  if (limited) return limited;
   try {
     const { messages, profile } = (await req.json()) as { messages: Message[]; profile?: Profile | null };
     const recent = messages.slice(-MAX_MESSAGES).map((m) => ({

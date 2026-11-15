@@ -18,8 +18,24 @@ export type JobFacts = {
 
 const pick = (text: string, label: string) => text.match(new RegExp(`${label}: ([^.]+)\\.`))?.[1]?.trim();
 
-const PAY_RE =
-  /\$\s?\d{1,3}(?:[.,]\d{1,3})?(?:\s?(?:-|–|to)\s?\$?\s?\d{1,3}(?:[.,]\d{1,3})?)?\s?(?:\/|per|an?)\s?(?:hr|hour)\b/i;
+// Hourly pay as postings usually write it: "$45/hr", "$40 - $50 per hour",
+// "Hourly Rate $54 — $60 USD", "Internship $46 — $46 USD". Two- or three-digit
+// amounts only, so annual salaries ($120,000) and "$124 trillion" never match.
+const AMT = String.raw`\$\s?(\d{2,3}(?:\.\d{2})?)(?![\d,])`;
+const RANGE = String.raw`${AMT}(?:\s?(?:-|–|—|to)\s?${AMT})?`;
+const PAY_HOURLY = new RegExp(String.raw`${RANGE}\s?(?:USD)?\s?(?:\/|per|an?)\s?(?:hr|hour)\b`, "i");
+const PAY_LABELED = new RegExp(String.raw`(?:hourly|pay range|internship|rate)[^$]{0,40}${RANGE}\s?USD\b`, "i");
+const PAY_RANGE_USD = new RegExp(String.raw`${AMT}\s?(?:-|–|—)\s?${AMT}\s?USD\b`, "i");
+
+function findPay(text: string) {
+  const m = text.match(PAY_HOURLY) || text.match(PAY_LABELED) || text.match(PAY_RANGE_USD);
+  if (!m) return undefined;
+  const nums = m.slice(1).filter(Boolean).map(Number);
+  if (!nums.length || nums.some((n) => n < 10 || n > 250)) return undefined;
+  const lo = Math.min(...nums), hi = Math.max(...nums);
+  const f = (n: number) => `$${Number.isInteger(n) ? n : n.toFixed(2)}`;
+  return lo === hi ? `${f(lo)}/hr` : `${f(lo)}–${f(hi)}/hr`;
+}
 
 const TERM_RE = /\b(?:summer|fall|winter|spring)\s+20\d\d\b/i;
 
@@ -49,6 +65,9 @@ function snippetOf(description: string) {
   return s.length > 240 ? s.slice(0, 237) + "…" : s;
 }
 
+// Exported so the jobs API can keep pay that sits past its description cut-off.
+export { findPay };
+
 export function jobFacts(job: Job): JobFacts {
   const d = job.description;
   const all = `${job.title} ${d}`;
@@ -73,8 +92,8 @@ export function jobFacts(job: Job): JobFacts {
     category: simplify ? pick(d, "Category") : undefined,
     term: pick(d, "Term") || all.match(TERM_RE)?.[0],
     degrees: pick(d, "Degrees"),
-    sponsorship: pick(d, "Visa sponsorship"),
-    pay: d.match(PAY_RE)?.[0].replace(/\s+/g, " "),
+    sponsorship: d.match(/Visa sponsorship: (.+)\.$/)?.[1]?.trim(),
+    pay: findPay(d.replace(/&mdash;|&ndash;/g, "–")),
     workplace,
     where: shortPlaces(job.location),
     snippet: simplify ? undefined : snippetOf(d),

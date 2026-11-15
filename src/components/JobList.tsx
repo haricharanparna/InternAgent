@@ -6,6 +6,7 @@ import TailorPanel from "./TailorPanel";
 import CompanyLogo from "./CompanyLogo";
 import RoleDetails from "./RoleDetails";
 import { jobFacts, skillsMentioned } from "@/lib/jobFacts";
+import { bumpUsage } from "@/lib/usage";
 import { PLACE_KEY, isNear, isRemote, locateMe, placeLabel, type Place } from "@/lib/location";
 import type { Fit, Job, Profile, ScoredJob } from "@/lib/types";
 
@@ -137,6 +138,7 @@ export default function JobList({ profile, trackedIds, onTrack }: Props) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       const byId = new Map((data.fits as Fit[]).map((f) => [f.id, f]));
+      bumpUsage("postingsScored", byId.size);
       setJobs((prev) => prev.map((j) => (byId.has(j.id) ? { ...j, fit: byId.get(j.id) } : j)));
     } catch (e) {
       setError((e as Error).message || "Scoring failed.");
