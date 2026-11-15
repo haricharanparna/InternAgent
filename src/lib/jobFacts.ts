@@ -102,9 +102,12 @@ export function jobFacts(job: Job): JobFacts {
   return {
     sourceLabel: simplify ? "SimplifyJobs list" : "Company job board",
     category: simplify ? normalizeCategory(pick(d, "Category")) : undefined,
-    term: pick(d, "Term") || all.match(TERM_RE)?.[0],
-    degrees: pick(d, "Degrees"),
-    sponsorship: d.match(/Visa sponsorship: (.+)\.$/)?.[1]?.trim(),
+    // "Term:", "Degrees:" and "Visa sponsorship:" are our own SimplifyJobs fields.
+    // Company postings can contain the same words in free text, so read those
+    // only for Simplify listings and use a strict season + year match otherwise.
+    term: (simplify && pick(d, "Term")) || all.match(TERM_RE)?.[0],
+    degrees: simplify ? pick(d, "Degrees") : undefined,
+    sponsorship: simplify ? d.match(/Visa sponsorship: (.+)\.$/)?.[1]?.trim() : undefined,
     pay: findPay(d.replace(/&mdash;|&ndash;/g, "–")),
     workplace,
     where: shortPlaces(job.location),
