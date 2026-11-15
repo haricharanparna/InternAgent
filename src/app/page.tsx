@@ -141,7 +141,7 @@ export default function Home() {
         )}
 
         <footer className="border-t border-slate-200 pt-6 text-sm text-slate-500">
-          AI scores are estimates and can be wrong. Always read the full posting before applying. · Built for SLAY HACKS 2026
+          AI scores are estimates and can be wrong. Always read the full posting before applying.
         </footer>
       </main>
       <ChatWidget />

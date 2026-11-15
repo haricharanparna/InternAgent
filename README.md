@@ -4,8 +4,6 @@
 
 An honest AI agent for students hunting internships. Upload your resume and it searches 4,600+ live internships from 1,300+ companies, scores how well you fit each one, tailors your resume for a posting **without inventing anything**, and tracks your applications.
 
-Built for SLAY HACKS 2026.
-
 ## Try it in 60 seconds
 1. Open the [live app](https://intern-agent-gs6m.vercel.app) and click **Try with a sample resume** (or upload your own PDF).
 2. Click **Find internships**, then **Score next 12 with AI**.

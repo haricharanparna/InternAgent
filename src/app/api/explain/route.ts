@@ -5,7 +5,7 @@ import type { Job, RoleInfo } from "@/lib/types";
 
 const MAX_DESC = 3500;
 // Wikimedia asks API clients to identify themselves.
-const UA = { "User-Agent": "InternAgent/0.1 (student hackathon project)" };
+const UA = { "User-Agent": "InternAgent/0.1 (student project)" };
 
 type Wiki = { title: string; extract: string; url: string };
 const wikiCache = new Map<string, Wiki | null>();
