@@ -58,11 +58,11 @@ STUDENT SKILLS: ${JSON.stringify(profile.skills)}
 STUDENT EXPERIENCE (numbered): ${JSON.stringify(numbered)}
 
 Return:
-- summary: a 2-sentence professional summary aimed at this posting, using only facts above.
+- summary: a 2-sentence professional summary aimed at this posting. Every claim must come from STUDENT SKILLS or STUDENT EXPERIENCE. Do NOT add personality traits, passions, soft skills or work styles (no "passionate", "team player", "collaborative", "detail-oriented") unless a bullet states them. Plain and factual beats impressive.
 - skills: the student's skills reordered so the most relevant to the posting come first. Use ONLY skills from STUDENT SKILLS, spelled the same way.
 - bullets: for EVERY bullet above, a rewritten version (keep its exp and bullet numbers). Lead with a strong verb, mirror the posting's wording where it is truthfully applicable, keep any numbers exactly as given.
   You may only REPHRASE. Every fact in the rewrite must be stated in that original bullet. Do NOT add tools, numbers, results, duties, or soft skills, and do not infer duties from a title (being "treasurer" does not prove "managed finances"). If a bullet can't be improved without adding facts, return it unchanged.
-- why: a short note on what you changed and which posting requirement it targets.
+- why: a short note on what you changed and which posting requirement it targets. Quote only words that actually appear in the original bullet; if you only reordered or added a verb, say exactly that.
 - gaps: up to 5 requirements from the posting the student does not show. These are advice only.`;
 
     const out = await generateJSON<ModelOutput>([{ text: prompt }], TAILOR_SCHEMA);

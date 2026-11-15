@@ -93,8 +93,8 @@ export default function Home() {
               <h1 style={{ animationDelay: "60ms" }} className="animate-fade-up mt-3 max-w-3xl text-[2.6rem] font-medium leading-[1.08] tracking-tight text-slate-900 sm:text-6xl">
                 Find internships you <em className="text-blue-600">actually</em> fit. Apply with a resume that&apos;s <em className="text-blue-600">still yours</em>.
               </h1>
-              <div className="mt-8 grid gap-8 md:grid-cols-[1.1fr_1fr] md:items-end">
-                <p style={{ animationDelay: "120ms" }} className="animate-fade-up max-w-md text-lg leading-relaxed text-slate-600">
+              <div className="mt-8 grid gap-8 md:grid-cols-[1.1fr_1fr] md:items-start">
+                <p style={{ animationDelay: "120ms" }} className="animate-fade-up max-w-md text-lg leading-relaxed text-slate-600 md:pt-4">
                   InternAgent searches live postings from top companies, scores how well you fit, and tailors your
                   resume for each one, without making anything up.
                 </p>

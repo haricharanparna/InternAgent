@@ -171,7 +171,7 @@
 }
 
 @media (min-width: 640px) {
-  :root { --header-h: 57px; }
+  :root { --header-h: 53px; } /* tucks 1px under the header so nothing peeks through */
 }
 
 body {

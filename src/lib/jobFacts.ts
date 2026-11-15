@@ -68,6 +68,18 @@ function snippetOf(description: string) {
 // Exported so the jobs API can keep pay that sits past its description cut-off.
 export { findPay };
 
+// SimplifyJobs uses a few spellings for the same category; fold them together.
+const CATEGORY_ALIASES: Record<string, string> = {
+  "software engineering": "Software",
+  "data science, ai & machine learning": "AI/ML/Data",
+  "product management": "Product",
+  "quantitative finance": "Quant",
+  "hardware engineering": "Hardware",
+};
+function normalizeCategory(c?: string) {
+  return c ? CATEGORY_ALIASES[c.toLowerCase()] || c : undefined;
+}
+
 export function jobFacts(job: Job): JobFacts {
   const d = job.description;
   const all = `${job.title} ${d}`;
@@ -89,7 +101,7 @@ export function jobFacts(job: Job): JobFacts {
 
   return {
     sourceLabel: simplify ? "SimplifyJobs list" : "Company job board",
-    category: simplify ? pick(d, "Category") : undefined,
+    category: simplify ? normalizeCategory(pick(d, "Category")) : undefined,
     term: pick(d, "Term") || all.match(TERM_RE)?.[0],
     degrees: pick(d, "Degrees"),
     sponsorship: d.match(/Visa sponsorship: (.+)\.$/)?.[1]?.trim(),
