@@ -54,11 +54,12 @@ export async function POST(req: Request) {
 POSTING: ${job.title} at ${job.company}
 ${job.description.slice(0, MAX_DESC)}
 
+STUDENT: ${JSON.stringify({ major: profile.major, school: profile.school, graduationYear: profile.graduationYear })}
 STUDENT SKILLS: ${JSON.stringify(profile.skills)}
 STUDENT EXPERIENCE (numbered): ${JSON.stringify(numbered)}
 
 Return:
-- summary: a 2-sentence professional summary aimed at this posting. Every claim must come from STUDENT SKILLS or STUDENT EXPERIENCE. Do NOT add personality traits, passions, soft skills or work styles (no "passionate", "team player", "collaborative", "detail-oriented") unless a bullet states them. Plain and factual beats impressive.
+- summary: a 2-sentence professional summary aimed at this posting. Sentence 1: the student's major exactly as given in STUDENT (e.g. "Computer Science student at X") plus the most relevant skills. Sentence 2: name the most relevant experiences by what their bullets literally say. Every claim must come from STUDENT, STUDENT SKILLS or STUDENT EXPERIENCE; describe what was built in the bullet's own words (an "app for tracking expenses" stays exactly that). Do NOT add personality traits, passions, soft skills or work styles (no "passionate", "team player", "collaborative", "detail-oriented") unless a bullet states them. Plain and factual beats impressive.
 - skills: the student's skills reordered so the most relevant to the posting come first. Use ONLY skills from STUDENT SKILLS, spelled the same way.
 - bullets: for EVERY bullet above, a rewritten version (keep its exp and bullet numbers). Lead with a strong verb, mirror the posting's wording where it is truthfully applicable, keep any numbers exactly as given.
   You may only REPHRASE. Every fact in the rewrite must be stated in that original bullet. Do NOT add tools, numbers, results, duties, or soft skills, and do not infer duties from a title (being "treasurer" does not prove "managed finances"). If a bullet can't be improved without adding facts, return it unchanged.
