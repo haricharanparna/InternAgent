@@ -10,6 +10,7 @@ import SettingsPanel from "@/components/SettingsPanel";
 import ChatWidget from "@/components/ChatWidget";
 import Impact from "@/components/Impact";
 import HowItWorks from "@/components/HowItWorks";
+import OpportunityPanel from "@/components/OpportunityPanel";
 import { followUpDue, useTracker } from "@/lib/tracker";
 import type { Profile } from "@/lib/types";
 
@@ -35,7 +36,10 @@ const STEPS = [
 export default function Home() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [tab, setTab] = useState<Tab>("search");
+  // The opportunity whose next-steps panel is open (opens when you save a job).
+  const [openId, setOpenId] = useState<string | null>(null);
   const tracker = useTracker();
+  const openApp = tracker.apps.find((a) => a.id === openId);
   const trackedIds = useMemo(() => new Set(tracker.apps.map((a) => a.id)), [tracker.apps]);
   const dueCount = tracker.apps.filter((a) => followUpDue(a)).length;
 
@@ -111,7 +115,7 @@ export default function Home() {
           )}
 
           <ResumeUpload profile={profile} onProfile={updateProfile} />
-          {profile && <JobList profile={profile} trackedIds={trackedIds} onTrack={tracker.add} />}
+          {profile && <JobList profile={profile} trackedIds={trackedIds} onTrack={(j) => { tracker.add(j); setOpenId(j.id); }} onOpen={setOpenId} />}
 
           {!profile && (
             <section>
@@ -137,13 +141,14 @@ export default function Home() {
         {tab === "how" && <HowItWorks profile={profile} />}
 
         {tab === "tracker" && (
-          <Tracker apps={tracker.apps} onUpdate={tracker.update} onRemove={tracker.remove} onBrowse={() => setTab("search")} />
+          <Tracker apps={tracker.apps} onUpdate={tracker.update} onRemove={tracker.remove} onBrowse={() => setTab("search")} onOpen={setOpenId} />
         )}
 
         <footer className="border-t border-slate-200 pt-6 text-sm text-slate-500">
           AI scores are estimates and can be wrong. Always read the full posting before applying.
         </footer>
       </main>
+      {openApp && <OpportunityPanel app={openApp} profile={profile} onUpdate={tracker.update} onClose={() => setOpenId(null)} />}
       <ChatWidget />
     </>
   );

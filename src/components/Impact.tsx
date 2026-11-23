@@ -77,6 +77,7 @@ export default function Impact({ apps, onSearch }: { apps: TrackedApp[]; onSearc
   const [tTailor, setTTailor] = useState(30);
   const [tScreen, setTScreen] = useState(6);
   const [tResearch, setTResearch] = useState(10);
+  const [tEmail, setTEmail] = useState(15);
 
   useEffect(() => setUsage(readUsage()), []);
 
@@ -84,7 +85,7 @@ export default function Impact({ apps, onSearch }: { apps: TrackedApp[]; onSearc
   const heard = applied.filter((a) => ["interview", "offer", "rejected"].includes(a.status));
   const interviews = apps.filter((a) => a.status === "interview" || a.status === "offer").length;
   const due = apps.filter((a) => followUpDue(a)).length;
-  const minutes = usage.resumesTailored * tTailor + usage.postingsScored * tScreen + usage.rolesExplained * tResearch;
+  const minutes = usage.resumesTailored * tTailor + usage.postingsScored * tScreen + usage.rolesExplained * tResearch + usage.emailsWritten * tEmail;
   const hours = minutes / 60;
   const scoredApps = applied.filter((a) => typeof a.fitScore === "number");
   const avgFit = scoredApps.length ? Math.round(scoredApps.reduce((n, a) => n + (a.fitScore || 0), 0) / scoredApps.length) : null;
@@ -132,7 +133,7 @@ export default function Impact({ apps, onSearch }: { apps: TrackedApp[]; onSearc
                   {hours >= 10 ? Math.round(hours) : hours.toFixed(1)} <span className="text-2xl text-slate-500">hours</span>
                 </p>
                 <p className="mt-3 rounded-md bg-slate-100 px-3 py-2 font-mono text-xs leading-relaxed text-slate-700">
-                  ({usage.resumesTailored} × {tTailor} + {usage.postingsScored} × {tScreen} + {usage.rolesExplained} × {tResearch}) ÷ 60 = {hours.toFixed(1)} h
+                  ({usage.resumesTailored} × {tTailor} + {usage.postingsScored} × {tScreen} + {usage.rolesExplained} × {tResearch} + {usage.emailsWritten} × {tEmail}) ÷ 60 = {hours.toFixed(1)} h
                 </p>
                 <p className="mt-2 text-xs text-slate-500">
                   This is an estimate. The minutes are assumptions about how long each task takes by hand. Change them to match you.
@@ -142,6 +143,7 @@ export default function Impact({ apps, onSearch }: { apps: TrackedApp[]; onSearc
                 <Minutes label="Tailoring one resume by hand" value={tTailor} onChange={setTTailor} />
                 <Minutes label="Reading a posting to judge your fit" value={tScreen} onChange={setTScreen} />
                 <Minutes label="Researching a role and company" value={tResearch} onChange={setTResearch} />
+                <Minutes label="Writing an internship email" value={tEmail} onChange={setTEmail} />
               </div>
             </div>
             <ul className="grid gap-3 text-sm text-slate-700 sm:grid-cols-3">
@@ -153,7 +155,7 @@ export default function Impact({ apps, onSearch }: { apps: TrackedApp[]; onSearc
                 <b className="text-slate-900">{due}</b> follow-up{due === 1 ? "" : "s"} due now
               </li>
               <li className="border-l-2 border-blue-500 pl-3">
-                <b className="text-slate-900">{fmt(usage.rolesExplained)}</b> roles explained in plain English
+                <b className="text-slate-900">{fmt(usage.emailsWritten)}</b> emails drafted · <b className="text-slate-900">{fmt(usage.plansMade)}</b> next-step plans
               </li>
             </ul>
           </>

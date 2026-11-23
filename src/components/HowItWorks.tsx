@@ -14,7 +14,7 @@ const STEPS = [
   { name: "Rank by keywords", detail: "Instant, free, runs in your browser" },
   { name: "Score with AI", detail: "12 postings per request, 0–100 with reasons" },
   { name: "Tailor resume", detail: "Rewords your bullets; server checks every skill" },
-  { name: "Track", detail: "Status board, response rate, follow-up reminders" },
+  { name: "Next steps & track", detail: "A plan and emails for the job you chose, plus a status board" },
 ];
 
 const API = [
@@ -25,6 +25,8 @@ const API = [
   ["POST", "/api/score", "Profile + up to 12 jobs → fit scores"],
   ["POST", "/api/tailor", "Profile + 1 job → reworded resume"],
   ["POST", "/api/explain", "1 job → plain-English role + company summary"],
+  ["POST", "/api/next-steps", "Profile + 1 chosen job + stage → step-by-step plan"],
+  ["POST", "/api/email", "Profile + 1 chosen job + email type → subject, body, tips"],
   ["POST", "/api/chat", "Last 12 messages + profile → assistant reply"],
 ];
 
@@ -205,7 +207,27 @@ export default function HowItWorks({ profile }: { profile: Profile | null }) {
         </P>
       </Section>
 
-      <Section n={6} title="Tracker math">
+      <Section n={6} title="Next steps and emails for the job you chose">
+        <P>
+          When you save a job, InternAgent writes a plan for that exact posting and stage. The server works out the dates
+          itself, so the AI never has to guess them:
+        </P>
+        <Formula>
+          days since applied = ⌊(today − applied_at) ÷ 86,400,000 ms⌋
+          <br />
+          follow-up date = applied_at + 7 days
+          <br />
+          stage goal: saved → apply well · applied → follow up · interview → prepare and thank · offer → decide · rejected → close the loop
+        </Formula>
+        <P>
+          The plan and the 6 email types (reach out, follow up, thank you, referral, accept, decline) use only your resume, your
+          notes and the posting. Anything unknown, like a recruiter&apos;s name, becomes a [bracketed] placeholder that the app
+          highlights for you to fill in. A skill is never linked to a project unless that project&apos;s bullets mention it.
+          Changing the stage rewrites the plan, and your checked-off steps are saved in your browser.
+        </P>
+      </Section>
+
+      <Section n={7} title="Tracker math">
         <Formula>
           applied = applications with status ≠ saved
           <br />
@@ -216,7 +238,7 @@ export default function HowItWorks({ profile }: { profile: Profile | null }) {
         <P>A rejection counts as a response, because hearing back at all is the signal the rate measures.</P>
       </Section>
 
-      <Section n={7} title="Near me and remote">
+      <Section n={8} title="Near me and remote">
         <P>
           Your browser asks for your location once. The coordinates are rounded to 2 decimal places (about 1 km) and sent to
           BigDataCloud&apos;s free lookup to get a city and state. Only those are saved.
@@ -224,7 +246,7 @@ export default function HowItWorks({ profile }: { profile: Profile | null }) {
         <Formula>near(job) ⇔ location contains your city OR your state&apos;s name OR matches &quot;, XX&quot; (your state code)&nbsp;&nbsp;·&nbsp;&nbsp;remote roles are always included</Formula>
       </Section>
 
-      <Section n={8} title="Reliability">
+      <Section n={9} title="Reliability">
         <ul className="max-w-3xl list-disc space-y-1.5 pl-5 text-[15px] leading-relaxed text-slate-700">
           <li>
             <b>Model fallback:</b> {models.length ? models.join(" → ") : "three Gemini models"}. If one is overloaded (429, 500,
@@ -237,7 +259,7 @@ export default function HowItWorks({ profile }: { profile: Profile | null }) {
         </ul>
       </Section>
 
-      <Section n={9} title="API reference">
+      <Section n={10} title="API reference">
         <div className="overflow-x-auto rounded-md border border-slate-200">
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">

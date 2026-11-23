@@ -59,3 +59,46 @@ export type TailoredResume = {
   // Requirements from the posting the student doesn't show. Never added to the resume.
   gaps: string[];
 };
+
+// ---------- Chosen opportunities: next steps and emails ----------
+
+export type AppStatus = "saved" | "applied" | "interview" | "offer" | "rejected";
+
+// What the server needs to know about one tracked internship.
+export type Opportunity = {
+  title: string;
+  company: string;
+  location: string;
+  url: string;
+  description?: string;
+  matched?: string[];
+  missing?: string[];
+  status: AppStatus;
+  appliedAt?: string;
+  notes?: string;
+};
+
+export type NextStep = { title: string; detail: string; when: string };
+
+export type NextStepsPlan = {
+  headline: string;
+  steps: NextStep[];
+  prep: string[];
+  suggestedEmail: EmailType | "none";
+  status: AppStatus; // the stage this plan was written for
+  generatedAt: string;
+  done?: number[]; // steps the student has checked off
+};
+
+export const EMAIL_TYPES = [
+  { id: "outreach", label: "Reach out", hint: "Message a recruiter or employee before applying" },
+  { id: "follow_up", label: "Follow up", hint: "Check in after applying with no reply" },
+  { id: "thank_you", label: "Thank you", hint: "Send within 24 hours of an interview" },
+  { id: "referral", label: "Ask for a referral", hint: "Ask someone you know at the company" },
+  { id: "accept", label: "Accept offer", hint: "Accept and ask about next steps" },
+  { id: "decline", label: "Decline offer", hint: "Say no politely and keep the door open" },
+] as const;
+
+export type EmailType = (typeof EMAIL_TYPES)[number]["id"];
+
+export type EmailDraft = { subject: string; body: string; tips: string[] };

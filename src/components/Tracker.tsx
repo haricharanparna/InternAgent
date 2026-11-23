@@ -8,12 +8,13 @@ type Props = {
   onUpdate: (id: string, patch: Partial<TrackedApp>) => void;
   onRemove: (id: string) => void;
   onBrowse: () => void;
+  onOpen: (id: string) => void;
 };
 
 const fmtDate = (iso?: string) =>
   iso ? new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "";
 
-export default function Tracker({ apps, onUpdate, onRemove, onBrowse }: Props) {
+export default function Tracker({ apps, onUpdate, onRemove, onBrowse, onOpen }: Props) {
   const [dragOver, setDragOver] = useState<Status | null>(null);
 
   if (apps.length === 0) {
@@ -78,7 +79,7 @@ export default function Tracker({ apps, onUpdate, onRemove, onBrowse }: Props) {
               </div>
               <ul className="space-y-2">
                 {items.map((a) => (
-                  <Card key={a.id} app={a} onUpdate={onUpdate} onRemove={onRemove} />
+                  <Card key={a.id} app={a} onUpdate={onUpdate} onRemove={onRemove} onOpen={onOpen} />
                 ))}
               </ul>
             </div>
@@ -90,7 +91,7 @@ export default function Tracker({ apps, onUpdate, onRemove, onBrowse }: Props) {
   );
 }
 
-function Card({ app, onUpdate, onRemove }: { app: TrackedApp; onUpdate: Props["onUpdate"]; onRemove: Props["onRemove"] }) {
+function Card({ app, onUpdate, onRemove, onOpen }: { app: TrackedApp; onUpdate: Props["onUpdate"]; onRemove: Props["onRemove"]; onOpen: Props["onOpen"] }) {
   const [open, setOpen] = useState(false);
   const due = followUpDue(app);
 
@@ -113,6 +114,14 @@ function Card({ app, onUpdate, onRemove }: { app: TrackedApp; onUpdate: Props["o
         {app.appliedAt ? `Applied ${fmtDate(app.appliedAt)}` : `Saved ${fmtDate(app.savedAt)}`}
       </p>
       {due && <p className="mt-1.5 rounded bg-amber-50 px-2 py-1 text-xs text-amber-800">Follow-up due</p>}
+      <button
+        onClick={() => onOpen(app.id)}
+        className="mt-2 w-full rounded-md border border-blue-200 bg-blue-50 px-2 py-1.5 text-left text-xs font-medium text-blue-700 hover:bg-blue-100"
+      >
+        {app.plan && app.plan.status === app.status
+          ? `✓ ${(app.plan.done || []).length}/${app.plan.steps.length} next steps · emails →`
+          : "Next steps & emails →"}
+      </button>
 
       <div className="mt-2 flex items-center gap-2">
         <select

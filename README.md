@@ -8,7 +8,8 @@ An honest AI agent for students hunting internships. Upload your resume and it s
 1. Open the [live app](https://intern-agent-gs6m.vercel.app) and click **Try with a sample resume** (or upload your own PDF).
 2. Click **Find internships**, then **Score next 12 with AI**.
 3. On any card, click **Tailor my resume** to see your bullets reworded side by side with the originals, or **About this role** for a plain-English summary.
-4. Click **Save to tracker**, then open the **Applications**, **Impact** and **How it works** tabs.
+4. Click **Save & get next steps** to see a plan for that job, then switch to **Write an email**.
+5. Open the **Applications**, **Impact** and **How it works** tabs.
 
 ## Features
 | Feature | What it does |
@@ -19,6 +20,8 @@ An honest AI agent for students hunting internships. Upload your resume and it s
 | Honest fit scores | 0–100 with matched requirements, missing requirements and a one-line reason. |
 | Tailored resumes | Bullets reworded for one posting, shown next to the originals, downloadable as a PDF. The server drops any skill that isn't on your resume. |
 | About this role | Plain-English summary of the role, plus company background from Wikipedia with a source link. |
+| Next steps for the job you chose | Saving a job opens a plan written for that posting and your stage (saved, applied, interview, offer, rejected): ordered steps with timing, what to prepare, and the email to send. Dates like the follow-up day are computed by the server, never guessed by the AI. |
+| Internship email writer | Six email types (reach out, follow up, thank you, ask for a referral, accept, decline) drafted from your resume and notes, with [placeholders] for anything unknown, editable, copyable or opened in your email app. |
 | Application tracker | Saved → Applied → Interview → Offer → Rejected board, response rate, notes and 7-day follow-up reminders. |
 | Near me / remote | One click finds your city and state (coordinates rounded, never stored) and filters to nearby or remote roles. |
 | AI assistant | Chat bubble for interview prep, follow-up emails and skill advice, personalized to your profile. |
@@ -44,6 +47,8 @@ Job boards + SimplifyJobs ──▶ /api/jobs ──▶ keyword rank in browser 
 
 **Tailoring guard.** `skills_shown = [AI-ordered skills that case-insensitively match your skills] + [your remaining skills]`; original bullets always come from your profile, never from the AI.
 
+**Next steps.** `follow-up date = appliedAt + 7 days` and `days since applied` are computed on the server and given to the model as facts; the plan is regenerated whenever the stage changes.
+
 **Tracker.** `response rate = |interview ∪ offer ∪ rejected| ÷ |status ≠ saved|`; a follow-up is due when `status = applied` and 7 days have passed since `appliedAt`.
 
 The **How it works** tab in the app shows all of this with live numbers.
@@ -67,6 +72,8 @@ The **How it works** tab in the app shows all of this with live numbers.
 | POST | `/api/score` | `{ profile, jobs }` (≤ 12 used) | `{ fits: Fit[] }` |
 | POST | `/api/tailor` | `{ profile, job }` | `{ resume }` |
 | POST | `/api/explain` | `{ job }` | `{ info }` |
+| POST | `/api/next-steps` | `{ profile, opportunity }` | `{ plan }` |
+| POST | `/api/email` | `{ profile, opportunity, type, recipient?, extra? }` | `{ draft }` |
 | POST | `/api/chat` | `{ messages, profile }` | `{ reply }` |
 
 Errors: `{ error: string }` with status 400, 429 (rate limit, includes `Retry-After`), 500 or 503. Types are in [`src/lib/types.ts`](src/lib/types.ts).

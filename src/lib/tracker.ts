@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { ScoredJob } from "./types";
+import type { AppStatus, NextStepsPlan, Opportunity, ScoredJob } from "./types";
 
 export const STATUSES = [
   { id: "saved", label: "Saved", color: "bg-slate-100 text-slate-700" },
@@ -11,7 +11,7 @@ export const STATUSES = [
   { id: "rejected", label: "Rejected", color: "bg-rose-100 text-rose-700" },
 ] as const;
 
-export type Status = (typeof STATUSES)[number]["id"];
+export type Status = AppStatus;
 
 export type TrackedApp = {
   id: string;
@@ -24,7 +24,17 @@ export type TrackedApp = {
   savedAt: string;
   appliedAt?: string;
   notes: string;
+  // Kept so next steps and emails can be specific to this posting.
+  description?: string;
+  matched?: string[];
+  missing?: string[];
+  plan?: NextStepsPlan;
 };
+
+export const toOpportunity = (a: TrackedApp): Opportunity => ({
+  title: a.title, company: a.company, location: a.location, url: a.url, description: a.description,
+  matched: a.matched, missing: a.missing, status: a.status, appliedAt: a.appliedAt, notes: a.notes,
+});
 
 const KEY = "internagent.tracker";
 export const FOLLOW_UP_DAYS = 7;
@@ -66,6 +76,9 @@ export function useTracker() {
               location: job.location,
               url: job.url,
               fitScore: job.fit?.score,
+              description: job.description.slice(0, 1500),
+              matched: job.fit?.matched,
+              missing: job.fit?.missing,
               status: "saved",
               savedAt: new Date().toISOString(),
               notes: "",

@@ -40,9 +40,10 @@ type Props = {
   profile: Profile;
   trackedIds: Set<string>;
   onTrack: (job: ScoredJob) => void;
+  onOpen: (id: string) => void;
 };
 
-export default function JobList({ profile, trackedIds, onTrack }: Props) {
+export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props) {
   const [jobs, setJobs] = useState<ScoredJob[]>([]);
   const [loading, setLoading] = useState<"" | "jobs" | "score">("");
   const [error, setError] = useState("");
@@ -312,11 +313,10 @@ export default function JobList({ profile, trackedIds, onTrack }: Props) {
                   <div className="mt-4 flex flex-wrap items-center gap-2">
                     <button onClick={() => setTailoring(j)} className="btn-primary px-4 py-2">✍️ Tailor my resume</button>
                     <button
-                      onClick={() => onTrack(j)}
-                      disabled={tracked}
-                      className={`btn-secondary ${tracked ? "border-emerald-300 bg-emerald-50 text-emerald-700 disabled:opacity-100" : ""}`}
+                      onClick={() => (tracked ? onOpen(j.id) : onTrack(j))}
+                      className={`btn-secondary ${tracked ? "border-emerald-300 bg-emerald-50 text-emerald-700" : ""}`}
                     >
-                      {tracked ? "✓ Saved" : "＋ Save to tracker"}
+                      {tracked ? "✓ Saved · Next steps" : "＋ Save & get next steps"}
                     </button>
                     <button onClick={() => toggleInfo(j.id)} aria-expanded={infoOpen.has(j.id)} className="btn-secondary">
                       About this role
