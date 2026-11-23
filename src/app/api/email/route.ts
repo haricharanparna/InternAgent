@@ -64,6 +64,7 @@ Return:
 Honesty rules (most important):
 - Use only facts from STUDENT and STUDENT NOTES. Never invent experiences, numbers, mutual contacts, conversations, interview details or anything about the company that isn't in POSTING DETAILS.
 - Never link a skill to a project unless that project's bullets mention it, and describe projects in their own words (don't upgrade "an app" to "full-stack features").
+- Don't claim what the student learned, gained or is strong at ("developed strong X skills", "passionate about") unless STUDENT says it. State what they did, and let the reader draw conclusions.
 - Anything unknown goes in [square brackets] for the student to fill in, e.g. [Name], [date of interview].
 - Sound like a real, polite student: no clichés like "I hope this email finds you well", no exaggerated enthusiasm.`;
 
