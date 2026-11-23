@@ -31,6 +31,27 @@ const GUIDE: Record<EmailType, string> = {
     "Politely declining an internship offer. Thank them sincerely, decline clearly without over-explaining, and leave the door open for the future. Under 100 words.",
 };
 
+// The model sometimes returns the email as one long line. Put the greeting,
+// paragraphs and sign-off back on their own lines so it's ready to paste.
+const SIGN_OFF = /\s*(Best regards|Kind regards|Warm regards|Best|Sincerely|Thank you|Thanks|Regards|Cheers),\s*/;
+function formatBody(body: string, name: string) {
+  let b = body.replace(/\r\n/g, "\n").trim();
+  if (b.includes("\n")) return b;
+  b = b.replace(/^((?:Dear|Hi|Hello)[^,\n]{0,60},)\s*/, "$1\n\n");
+  const m = b.match(new RegExp(`${SIGN_OFF.source}(?=[^,]*${name ? name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") : ""})`));
+  if (m && m.index !== undefined) {
+    const main = b.slice(0, m.index).trim();
+    const tail = b.slice(m.index + m[0].length).split(/,\s*/).join("\n");
+    // Break the middle into paragraphs of about two sentences.
+    const [greeting, ...rest] = main.split("\n\n");
+    const sentences = (rest.join(" ").match(/[^.!?]+[.!?]+/g) || [rest.join(" ")]).map((s) => s.trim());
+    const paras: string[] = [];
+    for (let i = 0; i < sentences.length; i += 2) paras.push(sentences.slice(i, i + 2).join(" ").trim());
+    b = [greeting, ...paras].filter(Boolean).join("\n\n") + `\n\n${m[1]},\n${tail}`;
+  }
+  return b;
+}
+
 export async function POST(req: Request) {
   const limited = rateLimited(req);
   if (limited) return limited;
@@ -69,7 +90,7 @@ Honesty rules (most important):
 - Sound like a real, polite student: no clichés like "I hope this email finds you well", no exaggerated enthusiasm.`;
 
     const draft = await generateJSON<EmailDraft>([{ text: prompt }], SCHEMA);
-    return NextResponse.json({ draft: { ...draft, tips: draft.tips.slice(0, 3) } });
+    return NextResponse.json({ draft: { ...draft, body: formatBody(draft.body, profile.name), tips: draft.tips.slice(0, 3) } });
   } catch (err) {
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });
   }
