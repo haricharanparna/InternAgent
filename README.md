@@ -54,7 +54,7 @@ Job boards + SimplifyJobs ──▶ /api/jobs ──▶ keyword rank in browser 
 
 **Next steps.** `follow-up date = appliedAt + 7 days` and `days since applied` are computed on the server and given to the model as facts; the plan is regenerated whenever the stage changes.
 
-**Resume builder guards.** Skills must match what you typed (anything else is dropped; anything left out goes under "Other"). A bullet is dropped if it contains a number that isn't in your answers for that experience. Verb tense comes from your end date. The checks panel (action verbs, bullet length, share of bullets with numbers, placeholders, about 550 words for one page) is plain code, no AI.
+**Resume builder guards.** Skills must match what you typed (anything else is dropped; anything left out goes under "Other"). A bullet is dropped if it contains a number that isn't in your answers for that experience. Verb tense comes from your dates (present only for ongoing work). The checks panel (action verbs, bullet length, share of bullets with numbers, placeholders, about 550 words for one page) is plain code, no AI.
 
 **Tracker.** `response rate = |interview ∪ offer ∪ rejected| ÷ |status ≠ saved|`; a follow-up is due when `status = applied` and 7 days have passed since `appliedAt`.
 

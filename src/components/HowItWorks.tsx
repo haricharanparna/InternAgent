@@ -141,7 +141,7 @@ export default function HowItWorks({ profile }: { profile: Profile | null }) {
           <br />
           skill kept ⇔ lowercase(skill) ∈ lowercase(skills you typed ∪ tools you typed); unplaced skills → &quot;Other&quot;
           <br />
-          tense = past if the end date is set and isn&apos;t &quot;Present&quot;, otherwise present
+          tense = present if the end date says &quot;Present&quot; or there&apos;s a start date and no end date, otherwise past
         </Formula>
         <P>
           The resume checks are plain code: bullets that start with weak phrases (&quot;Responsible for&quot;, &quot;Helped&quot;), bullets over

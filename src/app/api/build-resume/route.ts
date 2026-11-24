@@ -67,7 +67,8 @@ export async function POST(req: Request) {
     const exps = a.experiences.map((e, index) => ({
       index,
       kind: e.kind,
-      tense: clean(e.end, 30) && !/present|now|current/i.test(e.end) ? "past" : "present",
+      // Present tense only for ongoing work: end says "Present", or a start date with no end.
+      tense: /present|now|current/i.test(e.end || "") || (clean(e.start, 30) && !clean(e.end, 30)) ? "present" : "past",
       role: clean(e.role, 100),
       organization: clean(e.org, 100),
       whatTheyDid: clean(e.what, 1200),
