@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { AppStatus, NextStepsPlan, Opportunity, ScoredJob } from "./types";
+import type { AppStatus, InterviewPrep, NextStepsPlan, Opportunity, ScoredJob } from "./types";
 
 export const STATUSES = [
   { id: "saved", label: "Saved", color: "bg-slate-100 text-slate-700" },
@@ -29,11 +29,15 @@ export type TrackedApp = {
   matched?: string[];
   missing?: string[];
   plan?: NextStepsPlan;
+  prep?: InterviewPrep;
+  // Optional dates the student sets (ISO strings).
+  interviewAt?: string;
+  deadline?: string;
 };
 
 export const toOpportunity = (a: TrackedApp): Opportunity => ({
   title: a.title, company: a.company, location: a.location, url: a.url, description: a.description,
-  matched: a.matched, missing: a.missing, status: a.status, appliedAt: a.appliedAt, notes: a.notes,
+  matched: a.matched, missing: a.missing, status: a.status, appliedAt: a.appliedAt, notes: a.notes, deadline: a.deadline, interviewAt: a.interviewAt,
 });
 
 const KEY = "internagent.tracker";

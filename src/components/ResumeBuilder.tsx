@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { BuilderAnswers, BuilderExperience, BuiltResume, ExperienceKind, Profile } from "@/lib/types";
+import type { BuilderAnswers, BuilderExperience, BuiltResume, ExperienceKind, Profile, ResumeTemplate } from "@/lib/types";
 import { builtResumeText, printBuiltResume } from "@/lib/resumePdf";
 import { bumpUsage } from "@/lib/usage";
 
@@ -146,6 +146,7 @@ export default function ResumeBuilder({ profile, onUseProfile }: Props) {
         onRegenerate={generate}
         onCopy={async () => { await navigator.clipboard.writeText(builtResumeText(resume)); flash("Copied as plain text."); }}
         onUse={() => { onUseProfile(toProfile(resume, answers)); }}
+        target={answers.target}
       />
     );
   }
@@ -305,9 +306,10 @@ type EditorProps = {
   onRegenerate: () => void;
   onCopy: () => void;
   onUse: () => void;
+  target: string;
 };
 
-function Editor({ resume: r, onChange, busy, error, note, onBack, onRegenerate, onCopy, onUse }: EditorProps) {
+function Editor({ resume: r, onChange, busy, error, note, onBack, onRegenerate, onCopy, onUse, target }: EditorProps) {
   const { checks, words } = useMemo(() => runChecks(r), [r]);
   const [used, setUsed] = useState(false);
   const upd = (patch: Partial<BuiltResume>) => onChange({ ...r, ...patch });
@@ -330,7 +332,15 @@ function Editor({ resume: r, onChange, busy, error, note, onBack, onRegenerate, 
           <h1 className="mt-2 font-serif text-4xl font-medium tracking-tight text-slate-900">Your resume</h1>
           <p className="mt-2 max-w-xl text-sm text-slate-600">Edit anything on the left; the page on the right updates as you type and is what you download.</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="flex items-center gap-2 text-sm text-slate-600">
+            Style
+            <select className="field w-auto py-1.5" value={r.template || "classic"} onChange={(e) => upd({ template: e.target.value as ResumeTemplate })}>
+              <option value="classic">Classic</option>
+              <option value="modern">Modern</option>
+              <option value="compact">Compact</option>
+            </select>
+          </label>
           <button onClick={() => printBuiltResume(r)} className="btn-primary">⬇ Download PDF</button>
           <button onClick={onCopy} className="btn-secondary">Copy as text</button>
           <button onClick={() => { onUse(); setUsed(true); }} className="btn-secondary">{used ? "✓ Using for job search" : "Use it to find internships"}</button>
@@ -399,16 +409,15 @@ function Editor({ resume: r, onChange, busy, error, note, onBack, onRegenerate, 
                 <input className="field" aria-label="Dates" placeholder="Dates" value={x.dates} onChange={(e) => updExp(i, { dates: e.target.value })} />
               </div>
               {x.bullets.map((b, k) => (
-                <div key={k} className="flex gap-2">
-                  <span className="pt-2 text-slate-400" aria-hidden>•</span>
-                  <textarea
-                    className="field min-h-14"
-                    aria-label={`Bullet ${k + 1}`}
-                    value={b}
-                    onChange={(e) => updExp(i, { bullets: x.bullets.map((y, m) => (m === k ? e.target.value : y)) })}
-                  />
-                  <button onClick={() => updExp(i, { bullets: x.bullets.filter((_, m) => m !== k) })} className="self-start rounded px-2 py-2 text-sm text-slate-500 hover:bg-slate-100" aria-label="Delete bullet">✕</button>
-                </div>
+                <BulletRow
+                  key={k}
+                  n={k + 1}
+                  value={b}
+                  exp={x}
+                  target={target}
+                  onChange={(v) => updExp(i, { bullets: x.bullets.map((y, m) => (m === k ? v : y)) })}
+                  onDelete={() => updExp(i, { bullets: x.bullets.filter((_, m) => m !== k) })}
+                />
               ))}
               <button onClick={() => updExp(i, { bullets: [...x.bullets, ""] })} className="text-sm font-medium text-blue-700 hover:underline">＋ Add bullet</button>
             </div>
@@ -450,11 +459,77 @@ function Editor({ resume: r, onChange, busy, error, note, onBack, onRegenerate, 
   );
 }
 
-function Preview({ r }: { r: BuiltResume }) {
+function BulletRow({ n, value, exp, target, onChange, onDelete }: {
+  n: number; value: string; exp: BuiltResume["experiences"][number]; target: string; onChange: (v: string) => void; onDelete: () => void;
+}) {
+  const [ideas, setIdeas] = useState<{ options: string[]; question: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function improve() {
+    setBusy(true); setError(""); setIdeas(null);
+    try {
+      const res = await fetch("/api/improve-bullet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bullet: value, title: exp.title, organization: exp.organization, siblings: exp.bullets.filter((b) => b !== value), target }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Could not get ideas.");
+      setIdeas(data);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
-    <article aria-label="Resume preview" className="rounded-sm border border-slate-300 bg-white p-6 font-serif text-[12.5px] leading-snug text-neutral-900 shadow-sm sm:p-8">
-      <h2 className="text-center text-2xl text-neutral-900">{r.name || "Your Name"}</h2>
-      <p className="mt-1 break-words text-center text-[11.5px] text-neutral-600">{r.contact.filter(Boolean).join("  |  ")}</p>
+    <div>
+      <div className="flex gap-2">
+        <span className="pt-2 text-slate-400" aria-hidden>•</span>
+        <textarea className="field min-h-14" aria-label={`Bullet ${n}`} value={value} onChange={(e) => onChange(e.target.value)} />
+        <div className="flex flex-col gap-1">
+          <button onClick={improve} disabled={busy || value.trim().split(/\s+/).length < 3} className="rounded px-2 py-1.5 text-sm text-blue-700 hover:bg-blue-50 disabled:opacity-40" title="Suggest better wordings" aria-label={`Suggest better wordings for bullet ${n}`}>
+            {busy ? "…" : "✨"}
+          </button>
+          <button onClick={onDelete} className="rounded px-2 py-1.5 text-sm text-slate-500 hover:bg-slate-100" aria-label={`Delete bullet ${n}`}>✕</button>
+        </div>
+      </div>
+      {error && <p className="ml-5 mt-1 text-xs text-red-600">{error}</p>}
+      {ideas && (
+        <div className="animate-fade-in ml-5 mt-2 space-y-1.5 rounded-md border border-blue-100 bg-blue-50/50 p-2.5">
+          <p className="text-xs font-semibold text-slate-700">Pick a wording (only your facts, no new numbers):</p>
+          {ideas.options.length === 0 && <p className="text-xs text-slate-500">No safe rewrites this time. Try adding more detail.</p>}
+          {ideas.options.map((o) => (
+            <button key={o} onClick={() => { onChange(o); setIdeas(null); }} className="block w-full rounded bg-surface px-2.5 py-1.5 text-left text-sm text-slate-800 ring-1 ring-slate-200 hover:ring-blue-400">
+              {o}
+            </button>
+          ))}
+          {ideas.question && <p className="text-xs text-slate-600">💡 To make it stronger: {ideas.question}</p>}
+          <button onClick={() => setIdeas(null)} className="text-xs text-slate-500 hover:underline">Keep mine</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Each style changes fonts, alignment and heading rules in the preview and the PDF.
+const STYLE = {
+  classic: { font: "font-serif", head: "text-center", h: "border-b border-neutral-400 text-neutral-900", size: "text-[12.5px] leading-snug" },
+  modern: { font: "font-sans", head: "text-left", h: "border-b-2 border-blue-700 text-blue-800", size: "text-[12px] leading-snug" },
+  compact: { font: "font-sans", head: "text-left", h: "border-b border-neutral-300 text-neutral-800", size: "text-[11px] leading-tight" },
+} as const;
+
+function Preview({ r }: { r: BuiltResume }) {
+  const st = STYLE[r.template || "classic"];
+  const H = ({ children }: { children: React.ReactNode }) => (
+    <h3 className={`mb-1 mt-3 pb-0.5 text-[11.5px] font-semibold uppercase tracking-[0.08em] ${st.font} ${st.h}`}>{children}</h3>
+  );
+  return (
+    <article aria-label="Resume preview" className={`rounded-sm border border-slate-300 bg-white p-6 text-neutral-900 shadow-sm sm:p-8 ${st.font} ${st.size}`}>
+      <h2 className={`${st.head} ${st.font} text-2xl text-neutral-900`}>{r.name || "Your Name"}</h2>
+      <p className={`mt-1 break-words ${st.head} text-[11.5px] text-neutral-600`}>{r.contact.filter(Boolean).join("  |  ")}</p>
       {r.summary && <><H>Summary</H><p>{r.summary}</p></>}
       {r.education.length > 0 && <H>Education</H>}
       {r.education.map((e, i) => (
@@ -480,6 +555,3 @@ function Preview({ r }: { r: BuiltResume }) {
   );
 }
 
-function H({ children }: { children: React.ReactNode }) {
-  return <h3 className="mb-1 mt-3 border-b border-neutral-400 pb-0.5 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-neutral-900">{children}</h3>;
-}

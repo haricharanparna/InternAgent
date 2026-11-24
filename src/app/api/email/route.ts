@@ -17,6 +17,8 @@ const SCHEMA = {
 };
 
 const GUIDE: Record<EmailType, string> = {
+  cover_letter:
+    "A cover letter for this application, 230-330 words, 4 short paragraphs: (1) the exact role and one honest sentence on why this company or team, using only POSTING DETAILS; (2) the most relevant experience, told concretely; (3) a second experience or skill that matches a named requirement; (4) a brief close inviting a conversation. Greeting 'Dear [Name or Hiring Team],'. Subject: 'Cover letter: <role>'. Don't repeat the resume as a list: tell the main experience as a short story (the problem, what the student did, what happened). Never paste or paraphrase the company's mission statement; if POSTING DETAILS give no specific reason to pick this company, name something concrete from the role itself (the team, the kind of data or product) instead.",
   outreach:
     "A short first message to a recruiter or employee at the company BEFORE or while applying. Introduce the student in one line, name the specific role, connect 1-2 real experiences to the posting, and ask one small question or for a brief chat. Under 130 words.",
   follow_up:
@@ -80,7 +82,7 @@ STUDENT: ${JSON.stringify({ name: profile.name, email: profile.email, major: pro
 Return:
 - subject: a clear, specific subject line that names the role.
 - body: the full email with greeting and sign-off, signed with the student's name${profile.email ? " and email" : ""}. Use short paragraphs separated by blank lines. Plain text only, no markdown.
-- tips: 2-3 short, specific tips for sending THIS email (who to send it to, timing, what to attach or check).
+- tips: 2-3 short, specific tips for sending THIS email (for a cover letter: how to submit it, what to customize) (who to send it to, timing, what to attach or check).
 
 Honesty rules (most important):
 - Use only facts from STUDENT and STUDENT NOTES. Never invent experiences, numbers, mutual contacts, conversations, interview details or anything about the company that isn't in POSTING DETAILS.

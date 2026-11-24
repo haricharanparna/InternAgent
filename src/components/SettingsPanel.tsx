@@ -120,8 +120,54 @@ export default function SettingsPanel() {
           <button onClick={() => update(DEFAULT_A11Y)} className="mt-3 w-full rounded-xl py-2 text-xs font-medium text-slate-500 hover:bg-slate-50 hover:text-slate-800">
             Reset to defaults
           </button>
+
+          <div className="mt-3 border-t border-slate-200 pt-3">
+            <p className="text-xs font-semibold text-slate-700">Your data</p>
+            <p className="mt-0.5 text-xs text-slate-500">Everything lives in this browser. Save a backup to move it to another device.</p>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <button onClick={exportData} className="rounded-md border border-slate-300 px-2 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">⬇ Save backup</button>
+              <label className="cursor-pointer rounded-md border border-slate-300 px-2 py-1.5 text-center text-xs font-medium text-slate-700 hover:bg-slate-50">
+                ⬆ Restore
+                <input type="file" accept="application/json,.json" className="sr-only" onChange={(e) => e.target.files?.[0] && importData(e.target.files[0])} />
+              </label>
+            </div>
+            <button onClick={clearData} className="mt-2 w-full rounded-md py-1.5 text-xs text-rose-700 hover:bg-rose-50">Delete all my data from this browser</button>
+          </div>
         </div>
       )}
     </div>
   );
+}
+
+// ---------- Backup, restore and delete (all keys start with "internagent.") ----------
+const PREFIX = "internagent.";
+function exportData() {
+  const data: Record<string, unknown> = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k?.startsWith(PREFIX)) {
+      try { data[k] = JSON.parse(localStorage.getItem(k) || "null"); } catch { data[k] = localStorage.getItem(k); }
+    }
+  }
+  const blob = new Blob([JSON.stringify({ app: "InternAgent", version: 1, savedAt: new Date().toISOString(), data }, null, 2)], { type: "application/json" });
+  const link = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: `internagent-backup-${new Date().toISOString().slice(0, 10)}.json` });
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+}
+async function importData(file: File) {
+  try {
+    const parsed = JSON.parse(await file.text());
+    if (parsed?.app !== "InternAgent" || typeof parsed.data !== "object") throw new Error();
+    const keys = Object.keys(parsed.data).filter((k) => k.startsWith(PREFIX));
+    if (!confirm(`Restore ${keys.length} saved item${keys.length === 1 ? "" : "s"} from this backup? This replaces what's in this browser now.`)) return;
+    for (const k of keys) localStorage.setItem(k, typeof parsed.data[k] === "string" ? parsed.data[k] : JSON.stringify(parsed.data[k]));
+    location.reload();
+  } catch {
+    alert("That file isn't an InternAgent backup.");
+  }
+}
+function clearData() {
+  if (!confirm("Delete your profile, applications, resume drafts and settings from this browser? This can't be undone unless you saved a backup.")) return;
+  Object.keys(localStorage).filter((k) => k.startsWith(PREFIX)).forEach((k) => localStorage.removeItem(k));
+  location.reload();
 }

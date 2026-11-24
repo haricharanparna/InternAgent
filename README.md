@@ -8,26 +8,30 @@ An honest AI agent for students hunting internships. Upload your resume (or buil
 1. Open the [live app](https://intern-agent-gs6m.vercel.app) and click **Try with a sample resume** (or upload your own PDF, or open **Build a resume** if you don't have one).
 2. Click **Find internships**, then **Score next 12 with AI**.
 3. On any card, click **Tailor my resume** to see your bullets reworded side by side with the originals, or **About this role** for a plain-English summary.
-4. Click **Save & get next steps** to see a plan for that job, then switch to **Write an email**.
+4. Click **Save & get next steps** to see a plan for that job, then try **Emails & cover letter** and **Interview prep**.
 5. Open the **Applications**, **Impact** and **How it works** tabs.
 
 ## Features
 | Feature | What it does |
 |---|---|
-| Resume builder | For students without a resume: five short steps of plain questions (about you, education, experience, skills, goal). AI writes the summary, bullets and skill groups; name, contact, school and dates are copied by code. Every line is editable next to a live page preview, with free resume checks, PDF download, copy as text, and one click to use it for the job search. |
+| Resume builder | For students without a resume: five short steps of plain questions (about you, education, experience, skills, goal). AI writes the summary, bullets and skill groups; name, contact, school and dates are copied by code. Every line is editable next to a live page preview, with free resume checks, Classic, Modern and Compact styles, ✨ per-bullet rewrite ideas (new numbers filtered out), PDF download, copy as text, and one click to use it for the job search. |
 | Resume → profile | Gemini reads a PDF and extracts skills, experience, projects and interests into a fixed JSON schema. |
 | 4,600+ live internships | Pulled from 60 company job boards (Greenhouse, Lever, Ashby) and the SimplifyJobs list; filtered to upcoming terms and deduplicated. |
+| Search filters | Filter by field, pay listed, remote / near you and hide saved jobs; sort by best match, highest pay or company. |
 | Info-rich job cards | Source, category, remote/hybrid, a description snippet, term, hourly pay, degree level, visa sponsorship and which of your skills the posting mentions, all read directly from the posting (no AI). |
 | Honest fit scores | 0–100 with matched requirements, missing requirements and a one-line reason. |
 | Tailored resumes | Bullets reworded for one posting, shown next to the originals, downloadable as a PDF. The server drops any skill that isn't on your resume. |
 | About this role | Plain-English summary of the role, plus company background from Wikipedia with a source link. |
 | Next steps for the job you chose | Saving a job opens a plan written for that posting and your stage (saved, applied, interview, offer, rejected): ordered steps with timing, what to prepare, and the email to send. Dates like the follow-up day are computed by the server, never guessed by the AI. |
 | Internship email writer | Six email types (reach out, follow up, thank you, ask for a referral, accept, decline) drafted from your resume and notes, with [placeholders] for anything unknown, editable, copyable or opened in your email app. |
-| Application tracker | Saved → Applied → Interview → Offer → Rejected board, response rate, notes and 7-day follow-up reminders. |
+| Cover letters | A seventh writer type: a four-paragraph, 230–330 word letter from your resume and the posting, downloadable as a PDF. |
+| Interview prep | Seven likely questions for the posting (behavioral, technical, why this role, skill gap), each with why it's asked and which of your experiences to use. Answer by typing or out loud (browser speech recognition), see your speaking time, and get STAR feedback with a tighter version that adds no new facts. |
+| Application tracker | Saved → Applied → Interview → Offer → Rejected board, response rate, notes, application deadlines and interview dates, a "coming up" banner, 7-day follow-up reminders, one-click calendar export (.ics) and CSV export. |
 | Near me / remote | One click finds your city and state (coordinates rounded, never stored) and filters to nearby or remote roles. |
 | AI assistant | Chat bubble for interview prep, follow-up emails and skill advice, personalized to your profile. |
 | Impact tab | Your own numbers (postings scored, resumes tailored, response rate, time saved with editable assumptions) and live market stats. |
 | How it works tab | Every formula and rule the backend uses, with live numbers and an interactive keyword-score calculator. |
+| Your data, your device | Everything is stored in your browser. Save a backup file, restore it on another device, or delete it all from the settings menu. |
 | Accessibility | Text size, high contrast, readable font (Atkinson Hyperlegible), wider spacing, reduced motion, strong focus outlines, dark mode. |
 
 ## How it works
@@ -77,6 +81,8 @@ The **How it works** tab in the app shows all of this with live numbers.
 | POST | `/api/explain` | `{ job }` | `{ info }` |
 | POST | `/api/build-resume` | `{ answers }` | `{ resume }` |
 | POST | `/api/next-steps` | `{ profile, opportunity }` | `{ plan }` |
+| POST | `/api/interview` | `{ mode: "questions" or "feedback", profile, opportunity, question?, answer? }` | `{ questions }` or `{ feedback }` |
+| POST | `/api/improve-bullet` | `{ bullet, title?, organization?, siblings?, target? }` | `{ options, question }` |
 | POST | `/api/email` | `{ profile, opportunity, type, recipient?, extra? }` | `{ draft }` |
 | POST | `/api/chat` | `{ messages, profile }` | `{ reply }` |
 
@@ -137,7 +143,7 @@ public/             sample-resume.pdf (fictional student)
 ## Limitations
 - Company job boards are hand-picked in `src/lib/jobs.ts`. SimplifyJobs postings only include a title, category and term, so their fit scores are rougher.
 - The rate limiter is per server instance, so it's a safety net rather than a hard global limit.
-- Your data lives in one browser; clearing site data or switching devices starts fresh.
+- Your data lives in one browser. Use **Save backup** in the settings menu to move it to another device.
 
 ## License
 [MIT](LICENSE)

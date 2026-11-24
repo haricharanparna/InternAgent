@@ -51,6 +51,16 @@ export async function POST(req: Request) {
       facts.push(`They applied on ${fmt(applied)} (${days} day${days === 1 ? "" : "s"} ago).`);
       facts.push(`A polite follow-up is appropriate from ${fmt(new Date(applied.getTime() + 7 * DAY))} (7 days after applying).`);
     }
+    if (o.deadline) {
+      const d = new Date(o.deadline + "T23:59");
+      const left = Math.ceil((d.getTime() - today.getTime()) / DAY);
+      facts.push(left >= 0 ? `The student's application deadline is ${fmt(d)} (${left} day${left === 1 ? "" : "s"} from today).` : `The deadline the student noted (${fmt(d)}) has passed.`);
+    }
+    if (o.interviewAt) {
+      const d = new Date(o.interviewAt);
+      const left = Math.ceil((d.getTime() - today.getTime()) / DAY);
+      facts.push(left >= 0 ? `The interview is on ${fmt(d)} (${left} day${left === 1 ? "" : "s"} from today). Plan prep backwards from that date.` : `The interview was on ${fmt(d)}; a thank-you note is due if not sent.`);
+    }
 
     const prompt = `You are a practical internship coach. Write the next steps for ONE specific internship the student chose.
 

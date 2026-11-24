@@ -76,6 +76,8 @@ export type Opportunity = {
   status: AppStatus;
   appliedAt?: string;
   notes?: string;
+  deadline?: string;
+  interviewAt?: string;
 };
 
 export type NextStep = { title: string; detail: string; when: string };
@@ -91,6 +93,7 @@ export type NextStepsPlan = {
 };
 
 export const EMAIL_TYPES = [
+  { id: "cover_letter", label: "Cover letter", hint: "A one-page letter for applications that ask for one" },
   { id: "outreach", label: "Reach out", hint: "Message a recruiter or employee before applying" },
   { id: "follow_up", label: "Follow up", hint: "Check in after applying with no reply" },
   { id: "thank_you", label: "Thank you", hint: "Send within 24 hours of an interview" },
@@ -151,4 +154,31 @@ export type BuiltResume = {
   skills: { label: string; items: string[] }[];
   // Questions that would make the resume stronger (e.g. "How many people used it?").
   tips: string[];
+  template?: ResumeTemplate;
+};
+
+export type ResumeTemplate = "classic" | "modern" | "compact";
+
+// ---------- Interview prep ----------
+
+export type InterviewQuestion = {
+  q: string;
+  kind: "behavioral" | "technical" | "role" | "gap";
+  why: string; // why interviewers ask it
+  useThis: string; // which of the student's own experiences to draw on
+};
+
+export type AnswerFeedback = {
+  score: number; // 1-5
+  star: { situation: boolean; task: boolean; action: boolean; result: boolean };
+  strengths: string[];
+  improve: string[];
+  stronger: string; // the student's answer, tightened, using only their own facts
+};
+
+export type InterviewPrep = {
+  questions: InterviewQuestion[];
+  answers: Record<number, string>;
+  feedback: Record<number, AnswerFeedback>;
+  generatedAt: string;
 };

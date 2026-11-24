@@ -5,6 +5,8 @@ import { STATUSES, toOpportunity, type TrackedApp } from "@/lib/tracker";
 import { EMAIL_TYPES, type EmailDraft, type EmailType, type NextStepsPlan, type Profile } from "@/lib/types";
 import { bumpUsage } from "@/lib/usage";
 import CompanyLogo from "./CompanyLogo";
+import InterviewPrep from "./InterviewPrep";
+import { printLetter } from "@/lib/resumePdf";
 
 type Props = {
   app: TrackedApp;
@@ -30,7 +32,7 @@ const post = async <T,>(url: string, body: unknown): Promise<T> => {
 };
 
 export default function OpportunityPanel({ app, profile, onUpdate, onClose }: Props) {
-  const [tab, setTab] = useState<"steps" | "email">("steps");
+  const [tab, setTab] = useState<"steps" | "email" | "interview">(app.status === "interview" ? "interview" : "steps");
   const [emailType, setEmailType] = useState<EmailType>(DEFAULT_EMAIL[app.status]);
 
   useEffect(() => {
@@ -64,9 +66,10 @@ export default function OpportunityPanel({ app, profile, onUpdate, onClose }: Pr
             <button onClick={onClose} className="btn-secondary shrink-0 px-3 py-1.5" aria-label="Close">✕</button>
           </div>
           <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
-            <nav className="flex gap-5">
+            <nav className="flex gap-4 overflow-x-auto whitespace-nowrap [scrollbar-width:none] sm:gap-5">
               <button className={tabClass("steps")} onClick={() => setTab("steps")}>Next steps</button>
-              <button className={tabClass("email")} onClick={() => setTab("email")}>Write an email</button>
+              <button className={tabClass("email")} onClick={() => setTab("email")}>Emails &amp; cover letter</button>
+              <button className={tabClass("interview")} onClick={() => setTab("interview")}>Interview prep</button>
             </nav>
             <label className="mb-2 flex items-center gap-2 text-xs text-slate-500">
               Stage
@@ -86,6 +89,8 @@ export default function OpportunityPanel({ app, profile, onUpdate, onClose }: Pr
             <p className="rounded-md bg-amber-50 px-4 py-3 text-sm text-amber-900">
               Upload your resume on the Search tab first, so the steps and emails can use your real experience.
             </p>
+          ) : tab === "interview" ? (
+            <InterviewPrep app={app} profile={profile} onUpdate={onUpdate} />
           ) : tab === "steps" ? (
             <Steps app={app} profile={profile} onUpdate={onUpdate} onWriteEmail={writeEmail} />
           ) : (
@@ -286,7 +291,7 @@ function EmailWriter({ app, profile, type, setType }: {
       </div>
 
       <button onClick={generate} disabled={loading} className="btn-primary">
-        {loading ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" /> Writing…</> : draft ? "↻ Write it again" : "✉️ Write my email"}
+        {loading ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" /> Writing…</> : draft ? "↻ Write it again" : type === "cover_letter" ? "📝 Write my cover letter" : "✉️ Write my email"}
       </button>
       {error && <p className="text-sm text-red-600">{error}</p>}
 
@@ -315,8 +320,12 @@ function EmailWriter({ app, profile, type, setType }: {
             </p>
           )}
           <div className="flex flex-wrap gap-2">
-            <button onClick={copy} className="btn-primary px-4 py-2">{copied ? "✓ Copied" : "Copy email"}</button>
-            <a href={mailto} className="btn-secondary">Open in my email app</a>
+            <button onClick={copy} className="btn-primary px-4 py-2">{copied ? "✓ Copied" : type === "cover_letter" ? "Copy letter" : "Copy email"}</button>
+            {type === "cover_letter" ? (
+              <button onClick={() => printLetter(`Cover letter - ${app.company}`, draft.body)} className="btn-secondary">⬇ Download PDF</button>
+            ) : (
+              <a href={mailto} className="btn-secondary">Open in my email app</a>
+            )}
           </div>
           {draft.tips.length > 0 && (
             <ul className="space-y-1 border-t border-slate-200 pt-3 text-sm text-slate-600">

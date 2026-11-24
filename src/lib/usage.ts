@@ -11,9 +11,10 @@ export type Usage = {
   emailsWritten: number;
   plansMade: number;
   resumesBuilt: number;
+  answersPracticed: number;
 };
 
-export const EMPTY_USAGE: Usage = { resumesRead: 0, postingsScored: 0, resumesTailored: 0, rolesExplained: 0, emailsWritten: 0, plansMade: 0, resumesBuilt: 0 };
+export const EMPTY_USAGE: Usage = { resumesRead: 0, postingsScored: 0, resumesTailored: 0, rolesExplained: 0, emailsWritten: 0, plansMade: 0, resumesBuilt: 0, answersPracticed: 0 };
 
 export function readUsage(): Usage {
   try {

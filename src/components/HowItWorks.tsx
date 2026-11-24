@@ -14,7 +14,7 @@ const STEPS = [
   { name: "Rank by keywords", detail: "Instant, free, runs in your browser" },
   { name: "Score with AI", detail: "12 postings per request, 0–100 with reasons" },
   { name: "Tailor resume", detail: "Rewords your bullets; server checks every skill" },
-  { name: "Next steps & track", detail: "A plan and emails for the job you chose, plus a status board" },
+  { name: "Next steps & track", detail: "A plan, emails, a cover letter and interview practice for the job you chose, plus a status board" },
 ];
 
 const API = [
@@ -27,7 +27,9 @@ const API = [
   ["POST", "/api/explain", "1 job → plain-English role + company summary"],
   ["POST", "/api/next-steps", "Profile + 1 chosen job + stage → step-by-step plan"],
   ["POST", "/api/build-resume", "Your answers to the builder questions → summary, bullets, skill groups (facts copied by code)"],
-  ["POST", "/api/email", "Profile + 1 chosen job + email type → subject, body, tips"],
+  ["POST", "/api/interview", "mode questions: profile + job → 7 questions · mode feedback: question + answer → STAR feedback"],
+  ["POST", "/api/improve-bullet", "One resume bullet → 3 rewrites (new numbers filtered out) + a question"],
+  ["POST", "/api/email", "Profile + 1 chosen job + email or cover-letter type → subject, body, tips"],
   ["POST", "/api/chat", "Last 12 messages + profile → assistant reply"],
 ];
 
@@ -240,8 +242,25 @@ export default function HowItWorks({ profile }: { profile: Profile | null }) {
           The plan and the 6 email types (reach out, follow up, thank you, referral, accept, decline) use only your resume, your
           notes and the posting. Anything unknown, like a recruiter&apos;s name, becomes a [bracketed] placeholder that the app
           highlights for you to fill in. A skill is never linked to a project unless that project&apos;s bullets mention it.
-          Changing the stage rewrites the plan, and your checked-off steps are saved in your browser.
+          Changing the stage rewrites the plan, and your checked-off steps are saved in your browser. If you add an application
+          deadline or interview date, those are given to the AI as computed facts too (&quot;interview in 3 days&quot;).
         </P>
+        <P>
+          <b>Cover letter.</b> A seventh type: 230–330 words in four paragraphs, using only facts from your resume and the posting,
+          downloadable as a PDF.
+        </P>
+        <P>
+          <b>Interview prep.</b> Seven likely questions in a fixed mix (3 behavioral, 2 technical from the posting, 1 &quot;why this role&quot;,
+          1 about a requirement you may lack), each with why it&apos;s asked and which of your experiences to use. You answer by
+          typing or speaking (your browser&apos;s built-in speech recognition), and feedback marks each STAR part:
+        </P>
+        <Formula>
+          spoken time ≈ words ÷ 140 words per minute (flagged above 2 minutes)
+          <br />
+          STAR = Situation ✓/✗ · Task ✓/✗ · Action ✓/✗ · Result ✓/✗ · score 1–5
+          <br />
+          tighter version uses only your answer + resume; missing results become [placeholders]
+        </Formula>
       </Section>
 
       <Section n={7} title="Tracker math">

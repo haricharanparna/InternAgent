@@ -31,7 +31,9 @@ const STEPS = [
   "Browse internships ranked by your skills, filtered by where you live or remote.",
   "Get an honest fit score that shows which requirements you meet and which you don't.",
   "Tailor your resume for one posting. Every bullet is reworded from your own words, never invented.",
-  "Track every application on one board, with reminders to follow up after a week.",
+  "Get a plan for the job you chose, plus emails and a cover letter written from your real experience.",
+  "Practice the interview: likely questions for that posting, answered out loud, with feedback on each answer.",
+  "Track every application on one board, with deadlines, interview dates and follow-up reminders in your calendar.",
 ];
 
 export default function Home() {
@@ -101,8 +103,8 @@ export default function Home() {
               </h1>
               <div className="mt-8 grid gap-8 md:grid-cols-[1.1fr_1fr] md:items-start">
                 <p style={{ animationDelay: "120ms" }} className="animate-fade-up max-w-md text-lg leading-relaxed text-slate-600 md:pt-4">
-                  InternAgent searches live postings from top companies, scores how well you fit, and tailors your
-                  resume for each one, without making anything up.
+                  InternAgent searches live postings from top companies, scores how well you fit, tailors your resume,
+                  writes your emails and cover letter, and helps you practice the interview, without making anything up.
                 </p>
                 <dl style={{ animationDelay: "180ms" }} className="animate-fade-up grid grid-cols-2 border-t border-slate-200">
                   {STATS.map((st, i) => (

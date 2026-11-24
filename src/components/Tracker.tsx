@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { FOLLOW_UP_DAYS, STATUSES, followUpDue, type Status, type TrackedApp } from "@/lib/tracker";
+import { buildIcs, download, eventsFor, toCsv } from "@/lib/calendar";
 
 type Props = {
   apps: TrackedApp[];
@@ -13,6 +14,16 @@ type Props = {
 
 const fmtDate = (iso?: string) =>
   iso ? new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "";
+
+// Whole days from today until a date (negative = past).
+const daysUntil = (iso: string) => {
+  const d = new Date(iso.length <= 10 ? iso + "T00:00" : iso);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  d.setHours(0, 0, 0, 0);
+  return Math.round((d.getTime() - today.getTime()) / 86_400_000);
+};
+const inDays = (n: number) => (n === 0 ? "today" : n === 1 ? "tomorrow" : n < 0 ? `${-n} day${n === -1 ? "" : "s"} ago` : `in ${n} days`);
 
 export default function Tracker({ apps, onUpdate, onRemove, onBrowse, onOpen }: Props) {
   const [dragOver, setDragOver] = useState<Status | null>(null);
@@ -39,8 +50,46 @@ export default function Tracker({ apps, onUpdate, onRemove, onBrowse, onOpen }: 
     { label: "Response rate", value: sent.length ? `${Math.round((heardBack.length / sent.length) * 100)}%` : "—" },
   ];
 
+  const events = apps.flatMap(eventsFor);
+  const upcoming = apps
+    .flatMap((a) => [
+      a.interviewAt && { a, label: "Interview", when: a.interviewAt },
+      a.deadline && a.status === "saved" && { a, label: "Deadline", when: a.deadline },
+    ])
+    .filter((x): x is { a: TrackedApp; label: string; when: string } => !!x && daysUntil(x.when) >= 0 && daysUntil(x.when) <= 14)
+    .sort((x, y) => x.when.localeCompare(y.when));
+
   return (
     <section className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="font-serif text-3xl font-medium text-slate-900">Your applications</h1>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => download("internagent-dates.ics", buildIcs(events), "text/calendar")}
+            disabled={events.length === 0}
+            title={events.length ? "Deadlines, interviews and follow-up days" : "Add a deadline or interview date to a card first"}
+            className="btn-secondary px-3 py-1.5"
+          >
+            📅 Add {events.length || ""} date{events.length === 1 ? "" : "s"} to my calendar
+          </button>
+          <button onClick={() => download("internagent-applications.csv", toCsv(apps), "text/csv")} className="btn-secondary px-3 py-1.5">
+            ⬇ Export CSV
+          </button>
+        </div>
+      </div>
+
+      {upcoming.length > 0 && (
+        <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-slate-800">
+          <b>Coming up:</b>{" "}
+          {upcoming.map((u, i) => (
+            <span key={u.a.id + u.label}>
+              {i > 0 && " · "}
+              {u.label} with {u.a.company} {inDays(daysUntil(u.when))}
+            </span>
+          ))}
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {stats.map((s) => (
           <div key={s.label} className="card animate-fade-up p-4">
@@ -114,6 +163,16 @@ function Card({ app, onUpdate, onRemove, onOpen }: { app: TrackedApp; onUpdate: 
         {app.appliedAt ? `Applied ${fmtDate(app.appliedAt)}` : `Saved ${fmtDate(app.savedAt)}`}
       </p>
       {due && <p className="mt-1.5 rounded bg-amber-50 px-2 py-1 text-xs text-amber-800">Follow-up due</p>}
+      {app.interviewAt && daysUntil(app.interviewAt) >= 0 && (
+        <p className="mt-1.5 rounded bg-blue-50 px-2 py-1 text-xs text-blue-800">
+          Interview {inDays(daysUntil(app.interviewAt))}, {new Date(app.interviewAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}
+        </p>
+      )}
+      {app.deadline && app.status === "saved" && (
+        <p className={`mt-1.5 rounded px-2 py-1 text-xs ${daysUntil(app.deadline) < 0 ? "bg-slate-100 text-slate-500" : daysUntil(app.deadline) <= 3 ? "bg-rose-50 text-rose-800" : "bg-slate-50 text-slate-600"}`}>
+          {daysUntil(app.deadline) < 0 ? "Deadline passed" : `Apply ${inDays(daysUntil(app.deadline))}`}
+        </p>
+      )}
       <button
         onClick={() => onOpen(app.id)}
         className="mt-2 w-full rounded-md border border-blue-200 bg-blue-50 px-2 py-1.5 text-left text-xs font-medium text-blue-700 hover:bg-blue-100"
@@ -132,13 +191,21 @@ function Card({ app, onUpdate, onRemove, onOpen }: { app: TrackedApp; onUpdate: 
         >
           {STATUSES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
         </select>
-        <button onClick={() => setOpen(!open)} className="text-xs text-slate-500 hover:text-slate-800">
-          {open ? "Hide" : app.notes ? "Notes•" : "Notes"}
+        <button onClick={() => setOpen(!open)} className="shrink-0 text-xs text-slate-500 hover:text-slate-800">
+          {open ? "Hide" : app.notes || app.deadline || app.interviewAt ? "Details•" : "Details"}
         </button>
       </div>
 
       {open && (
         <div className="mt-2 space-y-2">
+          <label className="block text-xs text-slate-500">
+            Application deadline
+            <input type="date" value={app.deadline || ""} onChange={(e) => onUpdate(app.id, { deadline: e.target.value || undefined })} className="mt-0.5 w-full rounded-md bg-slate-50 px-2 py-1 text-xs text-slate-800 ring-1 ring-slate-200" />
+          </label>
+          <label className="block text-xs text-slate-500">
+            Interview date and time
+            <input type="datetime-local" value={app.interviewAt || ""} onChange={(e) => onUpdate(app.id, { interviewAt: e.target.value || undefined, ...(e.target.value && app.status !== "offer" && app.status !== "rejected" ? { status: "interview" as Status } : {}) })} className="mt-0.5 w-full rounded-md bg-slate-50 px-2 py-1 text-xs text-slate-800 ring-1 ring-slate-200" />
+          </label>
           <textarea
             value={app.notes}
             onChange={(e) => onUpdate(app.id, { notes: e.target.value })}

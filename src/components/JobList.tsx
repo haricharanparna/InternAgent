@@ -54,6 +54,10 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
   const [where, setWhere] = useState<"all" | "near" | "remote">("all");
   const [locating, setLocating] = useState(false);
   const [infoOpen, setInfoOpen] = useState<Set<string>>(new Set());
+  const [category, setCategory] = useState("");
+  const [paidOnly, setPaidOnly] = useState(false);
+  const [hideSaved, setHideSaved] = useState(false);
+  const [sort, setSort] = useState<"match" | "pay" | "company">("match");
 
   function toggleInfo(id: string) {
     setInfoOpen((prev) => {
@@ -115,16 +119,31 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
     }
   }
 
+  // Facts read from each posting (no AI), used by the filters and sort.
+  const facts = useMemo(() => new Map(jobs.map((j) => [j.id, jobFacts(j)])), [jobs]);
+  const categories = useMemo(() => {
+    const count = new Map<string, number>();
+    for (const f of facts.values()) if (f.category) count.set(f.category, (count.get(f.category) || 0) + 1);
+    return [...count.entries()].sort((a, b) => b[1] - a[1]);
+  }, [facts]);
+  const payOf = (id: string) => Number(facts.get(id)?.pay?.match(/\$(\d+)/)?.[1] || 0);
+
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
     const list = jobs.filter((j) => {
       if (q && !`${j.title} ${j.company} ${j.location}`.toLowerCase().includes(q)) return false;
+      if (category && facts.get(j.id)?.category !== category) return false;
+      if (paidOnly && !facts.get(j.id)?.pay) return false;
+      if (hideSaved && trackedIds.has(j.id)) return false;
       if (where === "remote") return isRemote(j.location);
       if (where === "near" && place) return isNear(j.location, place) || isRemote(j.location);
       return true;
     });
+    if (sort === "pay") return [...list].sort((a, b) => payOf(b.id) - payOf(a.id));
+    if (sort === "company") return [...list].sort((a, b) => a.company.localeCompare(b.company));
     return [...list].sort((a, b) => (b.fit?.score ?? -1) - (a.fit?.score ?? -1));
-  }, [jobs, query, where, place]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobs, query, where, place, category, paidOnly, hideSaved, sort, facts, trackedIds]);
 
   async function scoreWithAI() {
     setError("");
@@ -232,6 +251,26 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
         )}
       </div>
 
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-700">
+        <label className="flex items-center gap-2">
+          <span className="text-slate-500">Field</span>
+          <select value={category} onChange={(e) => { setCategory(e.target.value); setShown(PAGE); }} className="field w-auto max-w-[14rem] py-1.5">
+            <option value="">All fields</option>
+            {categories.map(([c, n]) => <option key={c} value={c}>{c} ({n})</option>)}
+          </select>
+        </label>
+        <label className="flex items-center gap-2">
+          <span className="text-slate-500">Sort</span>
+          <select value={sort} onChange={(e) => setSort(e.target.value as typeof sort)} className="field w-auto py-1.5">
+            <option value="match">Best match</option>
+            <option value="pay">Highest pay listed</option>
+            <option value="company">Company A–Z</option>
+          </select>
+        </label>
+        <label className="flex items-center gap-1.5"><input type="checkbox" checked={paidOnly} onChange={(e) => { setPaidOnly(e.target.checked); setShown(PAGE); }} className="h-4 w-4 accent-blue-600" /> Pay listed</label>
+        <label className="flex items-center gap-1.5"><input type="checkbox" checked={hideSaved} onChange={(e) => setHideSaved(e.target.checked)} className="h-4 w-4 accent-blue-600" /> Hide saved</label>
+      </div>
+
       <div className="flex flex-wrap items-center justify-between gap-2 pt-2 text-sm text-slate-500">
         <span>
           <b className="text-slate-800">{visible.length}</b> internships from <b className="text-slate-800">{companies}</b> companies
@@ -240,6 +279,17 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
       </div>
       {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
+      {visible.length === 0 && (
+        <div className="card p-6 text-center text-sm text-slate-600">
+          No internships match these filters.{" "}
+          <button
+            onClick={() => { setQuery(""); setCategory(""); setPaidOnly(false); setHideSaved(false); setWhere("all"); }}
+            className="font-medium text-blue-700 underline underline-offset-2"
+          >
+            Clear filters
+          </button>
+        </div>
+      )}
       <ul className="divide-y divide-slate-200 border-y border-slate-200">
         {visible.slice(0, shown).map((j, i) => {
           const tracked = trackedIds.has(j.id);
