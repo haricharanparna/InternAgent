@@ -26,6 +26,7 @@ const API = [
   ["POST", "/api/tailor", "Profile + 1 job → reworded resume"],
   ["POST", "/api/explain", "1 job → plain-English role + company summary"],
   ["POST", "/api/next-steps", "Profile + 1 chosen job + stage → step-by-step plan"],
+  ["POST", "/api/build-resume", "Your answers to the builder questions → summary, bullets, skill groups (facts copied by code)"],
   ["POST", "/api/email", "Profile + 1 chosen job + email type → subject, body, tips"],
   ["POST", "/api/chat", "Last 12 messages + profile → assistant reply"],
 ];
@@ -128,6 +129,22 @@ export default function HowItWorks({ profile }: { profile: Profile | null }) {
           The PDF (up to 5 MB) goes to Gemini as a file, with a JSON schema that only allows these fields: name, email, school,
           major, graduation year, skills, experiences (title, organization, type, bullets) and interests. The prompt tells the
           model to copy facts, not infer them. The result is kept in your browser&apos;s storage, never in a database.
+        </P>
+        <P>
+          <b>No resume? The builder.</b> You answer plain questions instead. Code copies your name, contact details, school and
+          dates exactly; the AI only writes the summary, the bullets and the skill groups, and the server checks them:
+        </P>
+        <Formula>
+          bullet kept ⇔ every number in it appears in your answers for that experience
+          <br />
+          skill kept ⇔ lowercase(skill) ∈ lowercase(skills you typed ∪ tools you typed); unplaced skills → &quot;Other&quot;
+          <br />
+          tense = past if the end date is set and isn&apos;t &quot;Present&quot;, otherwise present
+        </Formula>
+        <P>
+          The resume checks are plain code: bullets that start with weak phrases (&quot;Responsible for&quot;, &quot;Helped&quot;), bullets over
+          28 words, the share of bullets with a number (aim for 30%+), leftover [placeholders], and about 550 words as the
+          one-page limit.
         </P>
       </Section>
 

@@ -102,3 +102,53 @@ export const EMAIL_TYPES = [
 export type EmailType = (typeof EMAIL_TYPES)[number]["id"];
 
 export type EmailDraft = { subject: string; body: string; tips: string[] };
+
+// ---------- Resume builder ----------
+
+export type ExperienceKind = Profile["experiences"][number]["kind"];
+
+// The student's own answers to the builder's questions.
+export type BuilderExperience = {
+  id: string;
+  kind: ExperienceKind;
+  role: string;
+  org: string;
+  location: string;
+  start: string;
+  end: string;
+  what: string; // what they did, in their own words
+  tools: string; // tools and skills they used
+  results: string; // numbers or outcomes, if any
+};
+
+export type BuilderAnswers = {
+  name: string;
+  email: string;
+  phone: string;
+  location: string;
+  links: string;
+  school: string;
+  degree: string;
+  major: string;
+  gradDate: string;
+  gpa: string;
+  coursework: string;
+  honors: string;
+  experiences: BuilderExperience[];
+  skills: string;
+  languages: string;
+  target: string;
+};
+
+// The finished, editable resume. Contact, education and dates are copied from
+// the answers by code; the AI only writes the summary, bullets and skill groups.
+export type BuiltResume = {
+  name: string;
+  contact: string[];
+  summary: string;
+  education: { school: string; degree: string; date: string; details: string[] }[];
+  experiences: { kind: ExperienceKind; title: string; organization: string; location: string; dates: string; bullets: string[] }[];
+  skills: { label: string; items: string[] }[];
+  // Questions that would make the resume stronger (e.g. "How many people used it?").
+  tips: string[];
+};

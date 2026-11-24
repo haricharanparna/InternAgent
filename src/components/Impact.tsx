@@ -155,7 +155,7 @@ export default function Impact({ apps, onSearch }: { apps: TrackedApp[]; onSearc
                 <b className="text-slate-900">{due}</b> follow-up{due === 1 ? "" : "s"} due now
               </li>
               <li className="border-l-2 border-blue-500 pl-3">
-                <b className="text-slate-900">{fmt(usage.emailsWritten)}</b> emails drafted · <b className="text-slate-900">{fmt(usage.plansMade)}</b> next-step plans
+                <b className="text-slate-900">{fmt(usage.emailsWritten)}</b> emails drafted · <b className="text-slate-900">{fmt(usage.plansMade)}</b> next-step plans · <b className="text-slate-900">{fmt(usage.resumesBuilt)}</b> resumes built
               </li>
             </ul>
           </>

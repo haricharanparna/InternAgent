@@ -320,3 +320,11 @@ html.a11y-motion *, html.a11y-motion *::before, html.a11y-motion *::after {
 }
 .tag-accent { @apply border-blue-500 text-blue-700; }
 .tag-soft { @apply border-transparent bg-slate-100 text-slate-600; }
+
+/* Form fields used by the resume builder. */
+.field {
+  @apply w-full rounded-md border border-slate-300 bg-surface px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none;
+}
+.field-label {
+  @apply mb-1 block text-sm font-medium text-slate-700;
+}

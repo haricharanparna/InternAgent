@@ -11,12 +11,13 @@ import ChatWidget from "@/components/ChatWidget";
 import Impact from "@/components/Impact";
 import HowItWorks from "@/components/HowItWorks";
 import OpportunityPanel from "@/components/OpportunityPanel";
+import ResumeBuilder from "@/components/ResumeBuilder";
 import { followUpDue, useTracker } from "@/lib/tracker";
 import type { Profile } from "@/lib/types";
 
 const PROFILE_KEY = "internagent.profile";
 
-type Tab = "search" | "tracker" | "impact" | "how";
+type Tab = "search" | "build" | "tracker" | "impact" | "how";
 
 const STATS = [
   { value: "4,600+", label: "live internships from official job boards" },
@@ -26,7 +27,7 @@ const STATS = [
 ];
 
 const STEPS = [
-  "Upload your resume as a PDF. AI reads your skills and experience, and nothing is stored on a server.",
+  "Upload your resume as a PDF, or build one by answering a few questions. Nothing is stored on a server.",
   "Browse internships ranked by your skills, filtered by where you live or remote.",
   "Get an honest fit score that shows which requirements you meet and which you don't.",
   "Tailor your resume for one posting. Every bullet is reworded from your own words, never invented.",
@@ -73,6 +74,7 @@ export default function Home() {
           </button>
           <nav className="order-3 -mx-4 flex basis-full gap-4 overflow-x-auto whitespace-nowrap px-4 [scrollbar-width:none] sm:gap-5 sm:order-2 sm:mx-0 sm:ml-auto sm:basis-auto sm:px-0">
             <button className={tabClass("search")} onClick={() => setTab("search")}>Search</button>
+            <button className={tabClass("build")} onClick={() => setTab("build")}>Build a resume</button>
             <button className={tabClass("tracker")} onClick={() => setTab("tracker")}>
               Applications
               <span className="ml-1.5 rounded-[3px] border border-slate-300 px-1.5 text-[11px] text-slate-600">{tracker.apps.length}</span>
@@ -88,7 +90,7 @@ export default function Home() {
         </div>
       </header>
 
-      <main className={`mx-auto space-y-10 px-4 py-10 ${tab === "tracker" ? "max-w-6xl" : tab === "search" ? "max-w-4xl" : "max-w-5xl"}`}>
+      <main className={`mx-auto space-y-10 px-4 py-10 ${tab === "tracker" || tab === "build" ? "max-w-6xl" : tab === "search" ? "max-w-4xl" : "max-w-5xl"}`}>
         {/* Kept mounted while hidden so search results survive tab switches. */}
         <div className={tab === "search" ? "space-y-10" : "hidden"}>
           {!profile && (
@@ -115,6 +117,13 @@ export default function Home() {
           )}
 
           <ResumeUpload profile={profile} onProfile={updateProfile} />
+          {!profile && (
+            <p className="-mt-6 text-sm text-slate-600">
+              No resume yet?{" "}
+              <button onClick={() => setTab("build")} className="font-medium text-blue-700 underline underline-offset-2">Build one by answering a few questions</button>
+              , then edit it and download a PDF.
+            </p>
+          )}
           {profile && <JobList profile={profile} trackedIds={trackedIds} onTrack={(j) => { tracker.add(j); setOpenId(j.id); }} onOpen={setOpenId} />}
 
           {!profile && (
@@ -137,6 +146,7 @@ export default function Home() {
           )}
         </div>
 
+        {tab === "build" && <ResumeBuilder profile={profile} onUseProfile={(p) => { updateProfile(p); setTab("search"); window.scrollTo({ top: 0 }); }} />}
         {tab === "impact" && <Impact apps={tracker.apps} onSearch={() => setTab("search")} />}
         {tab === "how" && <HowItWorks profile={profile} />}
 

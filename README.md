@@ -2,10 +2,10 @@
 
 **Live app: https://intern-agent-gs6m.vercel.app** · free, no account needed
 
-An honest AI agent for students hunting internships. Upload your resume and it searches 4,600+ live internships from 1,300+ companies, scores how well you fit each one, tailors your resume for a posting **without inventing anything**, and tracks your applications.
+An honest AI agent for students hunting internships. Upload your resume (or build one by answering a few questions) and it searches 4,600+ live internships from 1,300+ companies, scores how well you fit each one, tailors your resume for a posting **without inventing anything**, and tracks your applications.
 
 ## Try it in 60 seconds
-1. Open the [live app](https://intern-agent-gs6m.vercel.app) and click **Try with a sample resume** (or upload your own PDF).
+1. Open the [live app](https://intern-agent-gs6m.vercel.app) and click **Try with a sample resume** (or upload your own PDF, or open **Build a resume** if you don't have one).
 2. Click **Find internships**, then **Score next 12 with AI**.
 3. On any card, click **Tailor my resume** to see your bullets reworded side by side with the originals, or **About this role** for a plain-English summary.
 4. Click **Save & get next steps** to see a plan for that job, then switch to **Write an email**.
@@ -14,6 +14,7 @@ An honest AI agent for students hunting internships. Upload your resume and it s
 ## Features
 | Feature | What it does |
 |---|---|
+| Resume builder | For students without a resume: five short steps of plain questions (about you, education, experience, skills, goal). AI writes the summary, bullets and skill groups; name, contact, school and dates are copied by code. Every line is editable next to a live page preview, with free resume checks, PDF download, copy as text, and one click to use it for the job search. |
 | Resume → profile | Gemini reads a PDF and extracts skills, experience, projects and interests into a fixed JSON schema. |
 | 4,600+ live internships | Pulled from 60 company job boards (Greenhouse, Lever, Ashby) and the SimplifyJobs list; filtered to upcoming terms and deduplicated. |
 | Info-rich job cards | Source, category, remote/hybrid, a description snippet, term, hourly pay, degree level, visa sponsorship and which of your skills the posting mentions, all read directly from the posting (no AI). |
@@ -49,6 +50,8 @@ Job boards + SimplifyJobs ──▶ /api/jobs ──▶ keyword rank in browser 
 
 **Next steps.** `follow-up date = appliedAt + 7 days` and `days since applied` are computed on the server and given to the model as facts; the plan is regenerated whenever the stage changes.
 
+**Resume builder guards.** Skills must match what you typed (anything else is dropped; anything left out goes under "Other"). A bullet is dropped if it contains a number that isn't in your answers for that experience. Verb tense comes from your end date. The checks panel (action verbs, bullet length, share of bullets with numbers, placeholders, about 550 words for one page) is plain code, no AI.
+
 **Tracker.** `response rate = |interview ∪ offer ∪ rejected| ÷ |status ≠ saved|`; a follow-up is due when `status = applied` and 7 days have passed since `appliedAt`.
 
 The **How it works** tab in the app shows all of this with live numbers.
@@ -72,6 +75,7 @@ The **How it works** tab in the app shows all of this with live numbers.
 | POST | `/api/score` | `{ profile, jobs }` (≤ 12 used) | `{ fits: Fit[] }` |
 | POST | `/api/tailor` | `{ profile, job }` | `{ resume }` |
 | POST | `/api/explain` | `{ job }` | `{ info }` |
+| POST | `/api/build-resume` | `{ answers }` | `{ resume }` |
 | POST | `/api/next-steps` | `{ profile, opportunity }` | `{ plan }` |
 | POST | `/api/email` | `{ profile, opportunity, type, recipient?, extra? }` | `{ draft }` |
 | POST | `/api/chat` | `{ messages, profile }` | `{ reply }` |
