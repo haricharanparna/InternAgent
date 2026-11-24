@@ -22,6 +22,10 @@ export type Job = {
   url: string;
   source: "greenhouse" | "lever" | "ashby" | "simplify";
   description: string;
+  // When the posting went up (or was last updated), as an ISO date, if the board says.
+  postedAt?: string;
+  // Added by the student from another site.
+  custom?: boolean;
 };
 
 export type Fit = {
@@ -158,6 +162,8 @@ export type BuiltResume = {
 };
 
 export type ResumeTemplate = "classic" | "modern" | "compact";
+
+export type Contact = { id: string; name: string; role: string; email: string; link: string; note: string; lastContacted?: string };
 
 // ---------- Interview prep ----------
 

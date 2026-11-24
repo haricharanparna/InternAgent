@@ -153,7 +153,7 @@ export default function Home() {
         {tab === "how" && <HowItWorks profile={profile} />}
 
         {tab === "tracker" && (
-          <Tracker apps={tracker.apps} onUpdate={tracker.update} onRemove={tracker.remove} onBrowse={() => setTab("search")} onOpen={setOpenId} />
+          <Tracker apps={tracker.apps} onUpdate={tracker.update} onRemove={tracker.remove} onBrowse={() => setTab("search")} onOpen={setOpenId} onAdd={(j) => { tracker.add(j); setOpenId(j.id); }} />
         )}
 
         <footer className="border-t border-slate-200 pt-6 text-sm text-slate-500">

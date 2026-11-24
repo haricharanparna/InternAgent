@@ -1,8 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FOLLOW_UP_DAYS, STATUSES, followUpDue, type Status, type TrackedApp } from "@/lib/tracker";
 import { buildIcs, download, eventsFor, toCsv } from "@/lib/calendar";
+import AddJobForm from "./AddJobForm";
+import type { ScoredJob } from "@/lib/types";
+
+const GOAL_KEY = "internagent.weeklyGoal";
 
 type Props = {
   apps: TrackedApp[];
@@ -10,6 +14,7 @@ type Props = {
   onRemove: (id: string) => void;
   onBrowse: () => void;
   onOpen: (id: string) => void;
+  onAdd: (job: ScoredJob) => void;
 };
 
 const fmtDate = (iso?: string) =>
@@ -25,17 +30,30 @@ const daysUntil = (iso: string) => {
 };
 const inDays = (n: number) => (n === 0 ? "today" : n === 1 ? "tomorrow" : n < 0 ? `${-n} day${n === -1 ? "" : "s"} ago` : `in ${n} days`);
 
-export default function Tracker({ apps, onUpdate, onRemove, onBrowse, onOpen }: Props) {
+export default function Tracker({ apps, onUpdate, onRemove, onBrowse, onOpen, onAdd }: Props) {
   const [dragOver, setDragOver] = useState<Status | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [goal, setGoal] = useState(5);
+  useEffect(() => {
+    try { const g = Number(localStorage.getItem(GOAL_KEY)); if (g > 0) setGoal(g); } catch {}
+  }, []);
+  const changeGoal = (g: number) => {
+    const v = Math.max(1, Math.min(50, g || 1));
+    setGoal(v);
+    try { localStorage.setItem(GOAL_KEY, String(v)); } catch {}
+  };
+  const addForm = adding && <AddJobForm onAdd={(j) => { onAdd(j); setAdding(false); }} onCancel={() => setAdding(false)} />;
 
   if (apps.length === 0) {
     return (
       <section className="card p-12 text-center"><div className="text-4xl">📋</div>
         <p className="mt-3 font-serif text-2xl">No applications yet</p>
-        <p className="mt-1 text-sm text-slate-600">Save internships from your search to track them here.</p>
-        <button onClick={onBrowse} className="btn-primary mt-6">
-          Find internships
-        </button>
+        <p className="mt-1 text-sm text-slate-600">Save internships from your search, or add one you found anywhere else.</p>
+        <div className="mt-6 flex flex-wrap justify-center gap-2">
+          <button onClick={onBrowse} className="btn-primary">Find internships</button>
+          <button onClick={() => setAdding(true)} className="btn-secondary">＋ Add a job from anywhere</button>
+        </div>
+        {addForm && <div className="mt-6 text-left">{addForm}</div>}
       </section>
     );
   }
@@ -64,6 +82,7 @@ export default function Tracker({ apps, onUpdate, onRemove, onBrowse, onOpen }: 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="font-serif text-3xl font-medium text-slate-900">Your applications</h1>
         <div className="flex flex-wrap gap-2">
+          <button onClick={() => setAdding(true)} className="btn-primary px-3 py-1.5">＋ Add a job</button>
           <button
             onClick={() => download("internagent-dates.ics", buildIcs(events), "text/calendar")}
             disabled={events.length === 0}
@@ -77,6 +96,10 @@ export default function Tracker({ apps, onUpdate, onRemove, onBrowse, onOpen }: 
           </button>
         </div>
       </div>
+
+      {addForm}
+
+      <WeeklyGoal apps={apps} goal={goal} onGoal={changeGoal} />
 
       {upcoming.length > 0 && (
         <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-slate-800">
@@ -182,12 +205,12 @@ function Card({ app, onUpdate, onRemove, onOpen }: { app: TrackedApp; onUpdate: 
           : "Next steps & emails →"}
       </button>
 
-      <div className="mt-2 flex items-center gap-2">
+      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
         <select
           value={app.status}
           onChange={(e) => onUpdate(app.id, { status: e.target.value as Status })}
           aria-label="Status"
-          className="min-w-0 flex-1 rounded-md bg-slate-50 px-2 py-1 text-xs ring-1 ring-slate-200"
+          className="min-w-[5.5rem] flex-1 rounded-md bg-slate-50 px-2 py-1 text-xs ring-1 ring-slate-200"
         >
           {STATUSES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
         </select>
@@ -219,5 +242,25 @@ function Card({ app, onUpdate, onRemove, onOpen }: { app: TrackedApp; onUpdate: 
         </div>
       )}
     </li>
+  );
+}
+
+// A weekly application goal, like the goals in job-search trackers.
+function WeeklyGoal({ apps, goal, onGoal }: { apps: TrackedApp[]; goal: number; onGoal: (g: number) => void }) {
+  const weekAgo = Date.now() - 7 * 86_400_000;
+  const done = apps.filter((a) => a.appliedAt && new Date(a.appliedAt).getTime() >= weekAgo).length;
+  const pct = Math.min(100, Math.round((done / goal) * 100));
+  return (
+    <div className="card flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 text-sm">
+      <span className="font-medium text-slate-800">Last 7 days: {done} of {goal} applications</span>
+      <span className="h-2 min-w-32 flex-1 overflow-hidden rounded-full bg-slate-200" role="progressbar" aria-valuenow={done} aria-valuemin={0} aria-valuemax={goal} aria-label="Weekly goal">
+        <span className={`block h-full rounded-full ${pct >= 100 ? "bg-emerald-500" : "bg-blue-600"}`} style={{ width: `${pct}%` }} />
+      </span>
+      <label className="flex items-center gap-1.5 text-slate-500">
+        Weekly goal
+        <input type="number" min={1} max={50} value={goal} onChange={(e) => onGoal(Number(e.target.value))} className="w-14 rounded-md border border-slate-300 bg-surface px-2 py-0.5 text-slate-800" />
+      </label>
+      {pct >= 100 && <span className="text-emerald-700">Goal met 🎉</span>}
+    </div>
   );
 }

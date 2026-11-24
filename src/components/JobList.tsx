@@ -7,10 +7,22 @@ import CompanyLogo from "./CompanyLogo";
 import RoleDetails from "./RoleDetails";
 import { jobFacts, skillsMentioned } from "@/lib/jobFacts";
 import { bumpUsage } from "@/lib/usage";
+import { keywordMatch } from "@/lib/keywords";
 import { PLACE_KEY, isNear, isRemote, locateMe, placeLabel, type Place } from "@/lib/location";
 import type { Fit, Job, Profile, ScoredJob } from "@/lib/types";
 
 const PAGE = 25;
+const SEEN_KEY = "internagent.seenJobs";
+
+// "3d ago" style age for a posting date.
+export function ago(iso?: string) {
+  if (!iso) return "";
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+  if (days < 1) return "today";
+  if (days < 7) return `${days}d ago`;
+  if (days < 60) return `${Math.floor(days / 7)}w ago`;
+  return `${Math.floor(days / 30)}mo ago`;
+}
 
 function scoreTone(score: number) {
   if (score >= 75) return { ring: "#10b981", text: "text-emerald-700", label: "Strong fit" };
@@ -57,7 +69,11 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
   const [category, setCategory] = useState("");
   const [paidOnly, setPaidOnly] = useState(false);
   const [hideSaved, setHideSaved] = useState(false);
-  const [sort, setSort] = useState<"match" | "pay" | "company">("match");
+  const [sort, setSort] = useState<"match" | "newest" | "keywords" | "pay" | "company">("match");
+  const [sponsorOnly, setSponsorOnly] = useState(false);
+  const [newOnly, setNewOnly] = useState(false);
+  // Jobs that weren't there on the student's last search (like job-alert "new" badges).
+  const [newIds, setNewIds] = useState<Set<string>>(new Set());
 
   function toggleInfo(id: string) {
     setInfoOpen((prev) => {
@@ -112,6 +128,14 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
         .map((x) => x.job);
       setJobs(ranked);
       setShown(PAGE);
+      try {
+        const seen: string[] = JSON.parse(localStorage.getItem(SEEN_KEY) || "[]");
+        if (seen.length) {
+          const before = new Set(seen);
+          setNewIds(new Set(ranked.filter((j) => !before.has(j.id)).map((j) => j.id)));
+        }
+        localStorage.setItem(SEEN_KEY, JSON.stringify(ranked.map((j) => j.id)));
+      } catch {}
     } catch (e) {
       setError((e as Error).message || "Could not load postings.");
     } finally {
@@ -126,6 +150,7 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
     for (const f of facts.values()) if (f.category) count.set(f.category, (count.get(f.category) || 0) + 1);
     return [...count.entries()].sort((a, b) => b[1] - a[1]);
   }, [facts]);
+  const matches = useMemo(() => new Map(jobs.map((j) => [j.id, keywordMatch(j, profile)])), [jobs, profile]);
   const payOf = (id: string) => Number(facts.get(id)?.pay?.match(/\$(\d+)/)?.[1] || 0);
 
   const visible = useMemo(() => {
@@ -135,15 +160,19 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
       if (category && facts.get(j.id)?.category !== category) return false;
       if (paidOnly && !facts.get(j.id)?.pay) return false;
       if (hideSaved && trackedIds.has(j.id)) return false;
+      if (sponsorOnly && !/offers sponsorship/i.test(facts.get(j.id)?.sponsorship || "")) return false;
+      if (newOnly && !newIds.has(j.id)) return false;
       if (where === "remote") return isRemote(j.location);
       if (where === "near" && place) return isNear(j.location, place) || isRemote(j.location);
       return true;
     });
+    if (sort === "newest") return [...list].sort((a, b) => (b.postedAt || "").localeCompare(a.postedAt || ""));
+    if (sort === "keywords") return [...list].sort((a, b) => (matches.get(b.id)?.pct ?? -1) - (matches.get(a.id)?.pct ?? -1));
     if (sort === "pay") return [...list].sort((a, b) => payOf(b.id) - payOf(a.id));
     if (sort === "company") return [...list].sort((a, b) => a.company.localeCompare(b.company));
     return [...list].sort((a, b) => (b.fit?.score ?? -1) - (a.fit?.score ?? -1));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jobs, query, where, place, category, paidOnly, hideSaved, sort, facts, trackedIds]);
+  }, [jobs, query, where, place, category, paidOnly, hideSaved, sort, facts, trackedIds, sponsorOnly, newOnly, newIds, matches]);
 
   async function scoreWithAI() {
     setError("");
@@ -263,11 +292,17 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
           <span className="text-slate-500">Sort</span>
           <select value={sort} onChange={(e) => setSort(e.target.value as typeof sort)} className="field w-auto py-1.5">
             <option value="match">Best match</option>
+            <option value="newest">Newest</option>
+            <option value="keywords">Keyword match</option>
             <option value="pay">Highest pay listed</option>
             <option value="company">Company A–Z</option>
           </select>
         </label>
         <label className="flex items-center gap-1.5"><input type="checkbox" checked={paidOnly} onChange={(e) => { setPaidOnly(e.target.checked); setShown(PAGE); }} className="h-4 w-4 accent-blue-600" /> Pay listed</label>
+        <label className="flex items-center gap-1.5" title="Only listings that say they sponsor work visas (from the SimplifyJobs list)"><input type="checkbox" checked={sponsorOnly} onChange={(e) => { setSponsorOnly(e.target.checked); setShown(PAGE); }} className="h-4 w-4 accent-blue-600" /> Sponsors visas</label>
+        {newIds.size > 0 && (
+          <label className="flex items-center gap-1.5"><input type="checkbox" checked={newOnly} onChange={(e) => { setNewOnly(e.target.checked); setShown(PAGE); }} className="h-4 w-4 accent-blue-600" /> New since last visit ({newIds.size})</label>
+        )}
         <label className="flex items-center gap-1.5"><input type="checkbox" checked={hideSaved} onChange={(e) => setHideSaved(e.target.checked)} className="h-4 w-4 accent-blue-600" /> Hide saved</label>
       </div>
 
@@ -283,7 +318,7 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
         <div className="card p-6 text-center text-sm text-slate-600">
           No internships match these filters.{" "}
           <button
-            onClick={() => { setQuery(""); setCategory(""); setPaidOnly(false); setHideSaved(false); setWhere("all"); }}
+            onClick={() => { setQuery(""); setCategory(""); setPaidOnly(false); setHideSaved(false); setSponsorOnly(false); setNewOnly(false); setWhere("all"); }}
             className="font-medium text-blue-700 underline underline-offset-2"
           >
             Clear filters
@@ -295,6 +330,7 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
           const tracked = trackedIds.has(j.id);
           const f = jobFacts(j);
           const mine = skillsMentioned(j, profile.skills);
+          const km = matches.get(j.id);
           const meta = [
             f.pay && `💵 ${f.pay}`,
             f.degrees && `🎓 ${f.degrees}`,
@@ -310,6 +346,8 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
                     <span className="tag tag-accent">{f.sourceLabel}</span>
                     {f.category && <span className="tag tag-soft">{f.category}</span>}
                     {f.workplace && <span className="tag tag-soft">{f.workplace}</span>}
+                    {newIds.has(j.id) && <span className="tag bg-emerald-100 text-emerald-800">New</span>}
+                    {j.postedAt && <span className="text-xs text-slate-500" title={`Posted or updated ${new Date(j.postedAt).toLocaleDateString()}`}>· {ago(j.postedAt)}</span>}
                   </div>
                   <h3 className="mt-2 text-xl font-medium leading-snug text-slate-900">{j.title}</h3>
                   {f.snippet ? (
@@ -331,7 +369,24 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
                       </>
                     )}
                   </p>
-                  {mine.length > 0 && (
+                  {km ? (
+                    <div className="mt-3 rounded-md border border-slate-200 px-3 py-2.5" title="Hard skills the posting names, compared with your resume. Plain text matching, no AI.">
+                      <div className="flex items-center gap-3 text-sm">
+                        <span className="shrink-0 font-medium text-slate-800">Keyword match {km.pct}%</span>
+                        <span className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-slate-200">
+                          <span className={`block h-full rounded-full ${km.pct >= 70 ? "bg-emerald-500" : km.pct >= 40 ? "bg-amber-500" : "bg-rose-400"}`} style={{ width: `${km.pct}%` }} />
+                        </span>
+                        <span className="shrink-0 text-xs text-slate-500">{km.matched.length}/{km.matched.length + km.missing.length}</span>
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {km.matched.slice(0, 8).map((m) => <span key={m} className="chip bg-emerald-100/70 text-emerald-800">✓ {m}</span>)}
+                        {km.missing.slice(0, 6).map((m) => <span key={m} className="chip bg-slate-100 text-slate-600">{m}</span>)}
+                      </div>
+                      {km.missing.length > 0 && km.pct < 70 && (
+                        <p className="mt-1.5 text-xs text-slate-500">If you really have the grey ones, add them to your resume in the words the posting uses. If not, Tailor shows how to cover the gap honestly.</p>
+                      )}
+                    </div>
+                  ) : mine.length > 0 && (
                     <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
                       <span className="mr-0.5 text-xs text-slate-500">Mentions your skills:</span>
                       {mine.map((m) => <span key={m} className="tag">{m}</span>)}

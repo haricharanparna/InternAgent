@@ -6,6 +6,7 @@ import { EMAIL_TYPES, type EmailDraft, type EmailType, type NextStepsPlan, type 
 import { bumpUsage } from "@/lib/usage";
 import CompanyLogo from "./CompanyLogo";
 import InterviewPrep from "./InterviewPrep";
+import Contacts from "./Contacts";
 import { printLetter } from "@/lib/resumePdf";
 
 type Props = {
@@ -32,8 +33,10 @@ const post = async <T,>(url: string, body: unknown): Promise<T> => {
 };
 
 export default function OpportunityPanel({ app, profile, onUpdate, onClose }: Props) {
-  const [tab, setTab] = useState<"steps" | "email" | "interview">(app.status === "interview" ? "interview" : "steps");
+  const [tab, setTab] = useState<"steps" | "email" | "interview" | "people">(app.status === "interview" ? "interview" : "steps");
   const [emailType, setEmailType] = useState<EmailType>(DEFAULT_EMAIL[app.status]);
+  // Who the next email is to (set from the People tab); the key remounts the writer.
+  const [to, setTo] = useState({ name: "", n: 0 });
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -70,6 +73,7 @@ export default function OpportunityPanel({ app, profile, onUpdate, onClose }: Pr
               <button className={tabClass("steps")} onClick={() => setTab("steps")}>Next steps</button>
               <button className={tabClass("email")} onClick={() => setTab("email")}>Emails &amp; cover letter</button>
               <button className={tabClass("interview")} onClick={() => setTab("interview")}>Interview prep</button>
+              <button className={tabClass("people")} onClick={() => setTab("people")}>People{app.contacts?.length ? ` (${app.contacts.length})` : ""}</button>
             </nav>
             <label className="mb-2 flex items-center gap-2 text-xs text-slate-500">
               Stage
@@ -89,12 +93,14 @@ export default function OpportunityPanel({ app, profile, onUpdate, onClose }: Pr
             <p className="rounded-md bg-amber-50 px-4 py-3 text-sm text-amber-900">
               Upload your resume on the Search tab first, so the steps and emails can use your real experience.
             </p>
+          ) : tab === "people" ? (
+            <Contacts app={app} onUpdate={onUpdate} onEmail={(c) => { setTo({ name: [c.name, c.role].filter(Boolean).join(", "), n: to.n + 1 }); setTab("email"); }} />
           ) : tab === "interview" ? (
             <InterviewPrep app={app} profile={profile} onUpdate={onUpdate} />
           ) : tab === "steps" ? (
             <Steps app={app} profile={profile} onUpdate={onUpdate} onWriteEmail={writeEmail} />
           ) : (
-            <EmailWriter app={app} profile={profile} type={emailType} setType={setEmailType} />
+            <EmailWriter key={to.n} app={app} profile={profile} type={emailType} setType={setEmailType} initialRecipient={to.name} />
           )}
         </div>
       </div>
@@ -209,10 +215,10 @@ function Steps({ app, profile, onUpdate, onWriteEmail }: {
 
 // ---------- Email writer ----------
 
-function EmailWriter({ app, profile, type, setType }: {
-  app: TrackedApp; profile: Profile; type: EmailType; setType: (t: EmailType) => void;
+function EmailWriter({ app, profile, type, setType, initialRecipient = "" }: {
+  app: TrackedApp; profile: Profile; type: EmailType; setType: (t: EmailType) => void; initialRecipient?: string;
 }) {
-  const [recipient, setRecipient] = useState("");
+  const [recipient, setRecipient] = useState(initialRecipient);
   const [extra, setExtra] = useState("");
   const [draft, setDraft] = useState<EmailDraft | null>(null);
   const [loading, setLoading] = useState(false);
@@ -245,7 +251,8 @@ function EmailWriter({ app, profile, type, setType }: {
   }
 
   const placeholders = draft ? [...new Set(`${draft.subject} ${draft.body}`.match(/\[[^\]]+\]/g) || [])] : [];
-  const mailto = draft ? `mailto:?subject=${encodeURIComponent(draft.subject)}&body=${encodeURIComponent(draft.body)}` : "";
+  const toEmail = app.contacts?.find((c) => recipient.startsWith(c.name) && c.email)?.email || "";
+  const mailto = draft ? `mailto:${encodeURIComponent(toEmail)}?subject=${encodeURIComponent(draft.subject)}&body=${encodeURIComponent(draft.body)}` : "";
 
   return (
     <div className="space-y-5">

@@ -17,7 +17,9 @@ An honest AI agent for students hunting internships. Upload your resume (or buil
 | Resume builder | For students without a resume: five short steps of plain questions (about you, education, experience, skills, goal). AI writes the summary, bullets and skill groups; name, contact, school and dates are copied by code. Every line is editable next to a live page preview, with free resume checks, Classic, Modern and Compact styles, ✨ per-bullet rewrite ideas (new numbers filtered out), PDF download, copy as text, and one click to use it for the job search. |
 | Resume → profile | Gemini reads a PDF and extracts skills, experience, projects and interests into a fixed JSON schema. |
 | 4,600+ live internships | Pulled from 60 company job boards (Greenhouse, Lever, Ashby) and the SimplifyJobs list; filtered to upcoming terms and deduplicated. |
-| Search filters | Filter by field, pay listed, remote / near you and hide saved jobs; sort by best match, highest pay or company. |
+| Search filters | Filter by field, pay listed, visa sponsorship, remote / near you, new since your last visit, and hide saved jobs; sort by best match, newest, keyword match, highest pay or company. |
+| Keyword match | Each card shows what % of the hard skills a posting names appear on your resume (green at 70%+), with matched and missing skills. Plain code against a list of about 160 skills, no AI. |
+| Freshness | Cards show how long ago the posting went up, and postings that weren't there on your last search get a **New** badge. |
 | Info-rich job cards | Source, category, remote/hybrid, a description snippet, term, hourly pay, degree level, visa sponsorship and which of your skills the posting mentions, all read directly from the posting (no AI). |
 | Honest fit scores | 0–100 with matched requirements, missing requirements and a one-line reason. |
 | Tailored resumes | Bullets reworded for one posting, shown next to the originals, downloadable as a PDF. The server drops any skill that isn't on your resume. |
@@ -26,7 +28,9 @@ An honest AI agent for students hunting internships. Upload your resume (or buil
 | Internship email writer | Six email types (reach out, follow up, thank you, ask for a referral, accept, decline) drafted from your resume and notes, with [placeholders] for anything unknown, editable, copyable or opened in your email app. |
 | Cover letters | A seventh writer type: a four-paragraph, 230–330 word letter from your resume and the posting, downloadable as a PDF. |
 | Interview prep | Seven likely questions for the posting (behavioral, technical, why this role, skill gap), each with why it's asked and which of your experiences to use. Answer by typing or out loud (browser speech recognition), see your speaking time, and get STAR feedback with a tighter version that adds no new facts. |
-| Application tracker | Saved → Applied → Interview → Offer → Rejected board, response rate, notes, application deadlines and interview dates, a "coming up" banner, 7-day follow-up reminders, one-click calendar export (.ics) and CSV export. |
+| Add a job from anywhere | Found a role on LinkedIn, Handshake or at a career fair? Add it with the pasted description and it gets the same plan, emails, cover letter and interview prep. |
+| Contacts | A People tab on each application for recruiters, interviewers and friends at the company, with "last contacted" dates and a one-click email to them. |
+| Application tracker | Weekly application goal, Saved → Applied → Interview → Offer → Rejected board, response rate, notes, application deadlines and interview dates, a "coming up" banner, 7-day follow-up reminders, one-click calendar export (.ics) and CSV export. |
 | Near me / remote | One click finds your city and state (coordinates rounded, never stored) and filters to nearby or remote roles. |
 | AI assistant | Chat bubble for interview prep, follow-up emails and skill advice, personalized to your profile. |
 | Impact tab | Your own numbers (postings scored, resumes tailored, response rate, time saved with editable assumptions) and live market stats. |

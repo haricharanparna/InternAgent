@@ -192,6 +192,21 @@ export default function HowItWorks({ profile }: { profile: Profile | null }) {
         </P>
         <Formula>k(job) = Σ over t in (skills ∪ interests) of [ t appears in title + description ]&nbsp;&nbsp;→ sort by k, highest first</Formula>
         <KeywordDemo profile={profile} />
+        <P>
+          <b>Keyword match on each card.</b> Like the resume-match scores in other job tools, but free and shown openly. The posting is
+          checked against a list of about 160 hard skills (with spellings like &quot;JS&quot; and &quot;Postgres&quot; folded together), and so is your
+          resume&apos;s skills and bullets:
+        </P>
+        <Formula>
+          keyword match = |skills the posting names ∩ skills your resume shows| ÷ |skills the posting names|
+          <br />
+          shown only when the posting names 3+ skills · green ≥ 70% · amber 40–69% · red &lt; 40%
+        </Formula>
+        <P>
+          <b>Freshness.</b> Each card shows when the posting went up (Greenhouse first_published, Lever createdAt, Ashby publishedAt,
+          SimplifyJobs date_posted). Your browser remembers which postings it showed you last time, so new ones get a
+          &quot;New&quot; badge and their own filter.
+        </P>
       </Section>
 
       <Section n={4} title="AI fit score (0–100)">

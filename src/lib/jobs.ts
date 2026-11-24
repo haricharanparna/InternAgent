@@ -38,8 +38,13 @@ async function getJSON(url: string) {
   return res.json();
 }
 
+const iso = (v: unknown) => {
+  const d = typeof v === "number" ? new Date(v < 1e12 ? v * 1000 : v) : typeof v === "string" ? new Date(v) : null;
+  return d && !isNaN(d.getTime()) ? d.toISOString() : undefined;
+};
+
 type GreenhouseJob = {
-  id: number; title: string; absolute_url: string; content: string;
+  id: number; title: string; absolute_url: string; content: string; first_published?: string; updated_at?: string;
   location?: { name: string }; company_name?: string;
 };
 
@@ -55,11 +60,12 @@ async function fromGreenhouse(slug: string): Promise<Job[]> {
       url: j.absolute_url,
       source: "greenhouse",
       description: htmlToText(j.content || ""),
+      postedAt: iso(j.updated_at || j.first_published),
     }));
 }
 
 type LeverJob = {
-  id: string; text: string; hostedUrl: string; descriptionPlain?: string;
+  id: string; text: string; hostedUrl: string; descriptionPlain?: string; createdAt?: number;
   categories?: { location?: string };
   lists?: { text: string; content: string }[];
 };
@@ -75,6 +81,7 @@ async function fromLever(slug: string): Promise<Job[]> {
       location: j.categories?.location || "Unknown",
       url: j.hostedUrl,
       source: "lever",
+      postedAt: iso(j.createdAt),
       description: [
         j.descriptionPlain || "",
         ...(j.lists || []).map((l) => `${l.text}: ${htmlToText(l.content)}`),
@@ -83,7 +90,7 @@ async function fromLever(slug: string): Promise<Job[]> {
 }
 
 type AshbyJob = {
-  id: string; title: string; location?: string; isRemote?: boolean; jobUrl: string; descriptionPlain?: string;
+  id: string; title: string; location?: string; isRemote?: boolean; jobUrl: string; descriptionPlain?: string; publishedAt?: string;
 };
 
 async function fromAshby(slug: string): Promise<Job[]> {
@@ -97,6 +104,7 @@ async function fromAshby(slug: string): Promise<Job[]> {
       location: j.isRemote ? `${j.location || ""} (Remote)`.trim() : j.location || "Unknown",
       url: j.jobUrl,
       source: "ashby",
+      postedAt: iso(j.publishedAt),
       description: j.descriptionPlain || "",
     }));
 }
@@ -120,6 +128,7 @@ async function fromSimplify(): Promise<Job[]> {
       location: j.locations?.join("; ") || "Unknown",
       url: j.url,
       source: "simplify",
+      postedAt: iso(j.date_posted),
       // Simplify has no full description, so give the AI what it does know.
       description: [
         j.category && `Category: ${j.category}.`,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { AppStatus, InterviewPrep, NextStepsPlan, Opportunity, ScoredJob } from "./types";
+import type { AppStatus, Contact, InterviewPrep, NextStepsPlan, Opportunity, ScoredJob } from "./types";
 
 export const STATUSES = [
   { id: "saved", label: "Saved", color: "bg-slate-100 text-slate-700" },
@@ -30,6 +30,8 @@ export type TrackedApp = {
   missing?: string[];
   plan?: NextStepsPlan;
   prep?: InterviewPrep;
+  contacts?: Contact[];
+  custom?: boolean;
   // Optional dates the student sets (ISO strings).
   interviewAt?: string;
   deadline?: string;
@@ -86,6 +88,7 @@ export function useTracker() {
               status: "saved",
               savedAt: new Date().toISOString(),
               notes: "",
+              custom: job.custom,
             },
             ...prev,
           ],

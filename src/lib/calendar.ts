@@ -43,11 +43,11 @@ export function buildIcs(events: CalEvent[]) {
 
 export function toCsv(apps: TrackedApp[]) {
   const cell = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-  const head = ["Company", "Role", "Location", "Status", "Fit score", "Saved", "Applied", "Deadline", "Interview", "Next steps done", "Notes", "Link"];
+  const head = ["Company", "Role", "Location", "Status", "Fit score", "Saved", "Applied", "Deadline", "Interview", "Next steps done", "Contacts", "Notes", "Link"];
   const rows = apps.map((a) => [
     a.company, a.title, a.location, STATUSES.find((s) => s.id === a.status)?.label, a.fitScore ?? "",
     a.savedAt?.slice(0, 10), a.appliedAt?.slice(0, 10) ?? "", a.deadline ?? "", a.interviewAt?.replace("T", " ") ?? "",
-    a.plan ? `${(a.plan.done || []).length}/${a.plan.steps.length}` : "", a.notes, a.url,
+    a.plan ? `${(a.plan.done || []).length}/${a.plan.steps.length}` : "", (a.contacts || []).map((c) => [c.name, c.role, c.email].filter(Boolean).join(" / ")).join("; "), a.notes, a.url,
   ]);
   return [head, ...rows].map((r) => r.map(cell).join(",")).join("\r\n");
 }

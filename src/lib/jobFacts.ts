@@ -56,7 +56,9 @@ function snippetOf(description: string) {
     .trim();
   if (text.length < 120) return undefined;
   // Split on sentence ends so a snippet never starts mid-word.
-  const sentences = text.split(/(?<=[.!?])\s+(?=[A-Z0-9"“(])/).filter((s) => s.length >= 40 && s.length <= 320);
+  // Skip application boilerplate that says nothing about the work.
+  const BOILER = /apply to each|consideration for multiple|equal opportunity|accommodation|privacy|cookies|background check|e-verify|pay transparency|benefits include|we are an equal|please note|applicants? (must|should)|click apply/i;
+  const sentences = text.split(/(?<=[.!?])\s+(?=[A-Z0-9"“(])/).filter((s) => s.length >= 40 && s.length <= 320 && !BOILER.test(s));
   const best =
     sentences.find((s) => /\b(you will|you'll|as an? .*intern|this intern|interns? will|in this role)\b/i.test(s)) ||
     sentences[0];
