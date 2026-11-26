@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import type { OfferDetails } from "./offers";
 import type { AppStatus, Contact, InterviewPrep, NextStepsPlan, Opportunity, ScoredJob } from "./types";
 
 export const STATUSES = [
@@ -39,6 +40,8 @@ export type TrackedApp = {
   deadline?: string;
   // Which resume the student sent: their original, or a tailored version (by when it was made).
   resumeUsed?: { kind: "original" | "tailored"; at?: string };
+  // Details the student enters once they hold an offer.
+  offer?: OfferDetails;
 };
 
 export const toOpportunity = (a: TrackedApp): Opportunity => ({

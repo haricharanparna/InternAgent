@@ -3,11 +3,14 @@
 import { useState } from "react";
 import type { ScoredJob } from "@/lib/types";
 import { trustOf } from "@/lib/authenticity";
+import { sameJob } from "@/lib/offers";
+
+type Saved = { id: string; title: string; company: string; url: string };
 
 // Save an internship found anywhere (LinkedIn, Handshake, a career fair, a
 // company site) so it gets the same plan, emails and interview prep.
 
-export default function AddJobForm({ onAdd, onCancel }: { onAdd: (job: ScoredJob) => void; onCancel: () => void }) {
+export default function AddJobForm({ onAdd, onCancel, apps = [], onOpen }: { onAdd: (job: ScoredJob) => void; onCancel: () => void; apps?: Saved[]; onOpen?: (id: string) => void }) {
   const [f, setF] = useState({ title: "", company: "", location: "", url: "", description: "" });
   const [error, setError] = useState("");
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setF({ ...f, [k]: e.target.value });
@@ -47,6 +50,17 @@ export default function AddJobForm({ onAdd, onCancel }: { onAdd: (job: ScoredJob
         <textarea className="field min-h-28" value={f.description} onChange={set("description")} placeholder="Responsibilities, requirements, about the team…" />
       </label>
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+      {(() => {
+        // Already saved? Same link, or same company and role name.
+        const dup = f.company.trim() && (f.title.trim() || f.url.trim()) ? apps.find((a) => sameJob(a, { company: f.company, title: f.title, url: f.url })) : undefined;
+        return dup ? (
+          <p role="status" className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            You already saved <b>{dup.title}</b> at {dup.company}.{" "}
+            {onOpen && <button type="button" onClick={() => onOpen(dup.id)} className="font-medium underline underline-offset-2">Open it</button>}
+            {" "}You can still add this one if it&apos;s a different role.
+          </p>
+        ) : null;
+      })()}
       {(() => {
         // Scam check on what they pasted, before they save it. Plain text rules, no AI.
         const t = f.company && (f.url || f.description.length > 40)

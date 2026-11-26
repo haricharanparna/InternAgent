@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { keywordScore } from "@/lib/jobs";
 import TailorPanel from "./TailorPanel";
 import CompanyLogo from "./CompanyLogo";
@@ -73,6 +73,23 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
   const [hidden, setHidden] = useStored<string[]>(KEYS.hidden, []);
   const [searches, setSearches] = useStored<SavedSearch[]>(KEYS.searches, []);
   const [watch, setWatch] = useStored<string[]>(KEYS.watch, []);
+  const searchBox = useRef<HTMLInputElement>(null);
+
+  // "/" jumps to the search box (like many sites), unless you're typing or a window is open.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "/" || e.ctrlKey || e.metaKey || e.altKey) return;
+      const t = e.target as HTMLElement;
+      if (t.closest("input, textarea, select, [contenteditable=true]") || document.querySelector("[role=dialog]")) return;
+      const box = searchBox.current;
+      if (!box || box.offsetParent === null) return; // search tab hidden
+      e.preventDefault();
+      box.focus();
+      box.select();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   const [showHidden, setShowHidden] = useState(false);
   const [length, setLength] = useState<"" | "short" | "long">("");
   const [eligibleOnly, setEligibleOnly] = useState(false);
@@ -284,8 +301,12 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
             <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
           </svg>
           <input
+            ref={searchBox}
             value={query}
             onChange={(e) => { setQuery(e.target.value); setShown(PAGE); }}
+            onKeyDown={(e) => { if (e.key === "Escape" && query) { e.stopPropagation(); setQuery(""); setShown(PAGE); } }}
+            aria-label="Search internships (press / to jump here)"
+            aria-keyshortcuts="/"
             placeholder={'Try "remote AI internships paying $20/hr" or a company or city'}
             aria-describedby="search-understood"
             className="w-full rounded-md border border-slate-300 bg-surface py-2 pl-9 pr-3 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"

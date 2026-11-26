@@ -32,6 +32,10 @@ export function notificationsFor(apps: TrackedApp[], newCount: { count: number; 
       if (t > now && t - now <= 7 * DAY) out.push({ key: `dl:${a.id}:${a.deadline}`, icon: "⏰", text: `Apply to ${who} before the deadline.`, when: fmtDay(new Date(t)), urgent: t - now <= 2 * DAY, open: a.id });
       else if (t <= now && now - t <= 14 * DAY) out.push({ key: `dlpast:${a.id}:${a.deadline}`, icon: "⌛", text: `The deadline you noted for ${who} has passed. Apply anyway if it's still open, or archive it.`, when: fmtDay(new Date(t)), open: a.id });
     }
+    if (a.status === "offer" && a.offer?.decideBy) {
+      const t = new Date(a.offer.decideBy + "T23:59").getTime();
+      if (t > now && t - now <= 7 * DAY) out.push({ key: `decide:${a.id}:${a.offer.decideBy}`, icon: "🤝", text: `Decide on your ${a.company} offer. Compare offers in Applications.`, when: fmtDay(new Date(t)), urgent: t - now <= 2 * DAY, open: a.id });
+    }
     if (a.status === "assessment") out.push({ key: `asm:${a.id}`, icon: "🧩", text: `Finish the assessment for ${who}.`, when: "Before it's due", open: a.id });
   }
   for (const w of watchNew) out.push({ key: `watch:${w.company}:${w.at}`, icon: "★", text: `${w.company} posted ${w.count} new internship${w.count === 1 ? "" : "s"}. You're watching this company.`, when: fmtDay(new Date(w.at)), search: true });

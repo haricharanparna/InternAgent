@@ -6,6 +6,9 @@ import { buildIcs, download, eventsFor, toCsv } from "@/lib/calendar";
 import AddJobForm from "./AddJobForm";
 import type { Profile, ScoredJob } from "@/lib/types";
 import { keywordMatch } from "@/lib/keywords";
+import { RATING_LABELS, offerScore, type OfferDetails, type OfferRatings } from "@/lib/offers";
+import { postingFacts } from "@/lib/postingFacts";
+import { hourlyPay } from "@/lib/jobFacts";
 
 const GOAL_KEY = "internagent.weeklyGoal";
 
@@ -45,7 +48,7 @@ export default function Tracker({ apps, onUpdate, onRemove, onBrowse, onOpen, on
     setGoal(v);
     try { localStorage.setItem(GOAL_KEY, String(v)); } catch {}
   };
-  const addForm = adding && <AddJobForm onAdd={(j) => { onAdd(j); setAdding(false); }} onCancel={() => setAdding(false)} />;
+  const addForm = adding && <AddJobForm apps={apps} onOpen={(id) => { setAdding(false); onOpen(id); }} onAdd={(j) => { onAdd(j); setAdding(false); }} onCancel={() => setAdding(false)} />;
 
   if (apps.length === 0) {
     return (
@@ -127,6 +130,7 @@ export default function Tracker({ apps, onUpdate, onRemove, onBrowse, onOpen, on
         ))}
       </div>
 
+      <Offers apps={apps} onUpdate={onUpdate} />
       <Pipeline apps={apps} />
 
       <div className="flex flex-wrap items-center gap-2">
@@ -381,5 +385,74 @@ function Pipeline({ apps }: { apps: TrackedApp[] }) {
       </div>
       <p className="mt-3 text-[11px] text-slate-500">Percentages compare each step with the one before. Small numbers swing a lot, so read them as a rough guide.</p>
     </details>
+  );
+}
+
+// Offer comparison: pay read from the posting (you can correct it) plus your own
+// 1–5 ratings. Plain math, shown in full, so the decision stays yours.
+function Offers({ apps, onUpdate }: { apps: TrackedApp[]; onUpdate: (id: string, p: Partial<TrackedApp>) => void }) {
+  const offers = apps.filter((a) => a.status === "offer");
+  if (!offers.length) return null;
+  const postedPay = (a: TrackedApp) => {
+    const pay = postingFacts({ id: a.id, title: a.title, company: a.company, location: a.location, url: a.url, source: "greenhouse", description: a.description || "" }).find((f) => f.key === "pay")?.value;
+    return pay ? Math.round(hourlyPay(pay)) || undefined : undefined;
+  };
+  const details = (a: TrackedApp): OfferDetails => ({ ...a.offer, pay: a.offer?.pay ?? postedPay(a) });
+  const set = (a: TrackedApp, patch: Partial<OfferDetails>) => onUpdate(a.id, { offer: { ...details(a), ...patch } });
+  const best = Math.max(0, ...offers.map((a) => details(a).pay || 0));
+  const scores = offers.map((a) => offerScore(details(a), best));
+  const top = offers.length > 1 ? Math.max(...scores) : -1;
+  const keys = Object.keys(RATING_LABELS) as (keyof OfferRatings)[];
+  return (
+    <section className="rounded-md border border-emerald-200 bg-emerald-50/40 p-4">
+      <h2 className="font-semibold text-slate-900">{offers.length > 1 ? `Compare your ${offers.length} offers` : "Your offer"}</h2>
+      <p className="mt-0.5 text-sm text-slate-600">Rate each offer 1–5 on what matters to you. The score is 30% hourly pay (against your best offer) and 70% your ratings.</p>
+      <div className="mt-3 overflow-x-auto">
+        <table className="w-full min-w-[560px] text-sm">
+          <thead>
+            <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
+              <th scope="col" className="py-1.5 pr-3 font-semibold"> </th>
+              {offers.map((a) => <th key={a.id} scope="col" className="py-1.5 pr-3 font-semibold normal-case text-slate-900">{a.company}<span className="block text-xs font-normal text-slate-500">{a.title}</span></th>)}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-emerald-100">
+            <tr>
+              <th scope="row" className="py-2 pr-3 text-left font-medium text-slate-700">Pay ($/hour)</th>
+              {offers.map((a) => <td key={a.id} className="py-2 pr-3"><input type="number" min={0} value={details(a).pay ?? ""} onChange={(e) => set(a, { pay: e.target.value ? Number(e.target.value) : undefined })} aria-label={`Hourly pay at ${a.company}`} className="w-24 rounded-md border border-slate-300 bg-surface px-2 py-1" /></td>)}
+            </tr>
+            <tr>
+              <th scope="row" className="py-2 pr-3 text-left font-medium text-slate-700">Start date</th>
+              {offers.map((a) => <td key={a.id} className="py-2 pr-3"><input type="date" value={details(a).start || ""} onChange={(e) => set(a, { start: e.target.value || undefined })} aria-label={`Start date at ${a.company}`} className="rounded-md border border-slate-300 bg-surface px-2 py-1" /></td>)}
+            </tr>
+            <tr>
+              <th scope="row" className="py-2 pr-3 text-left font-medium text-slate-700">Decide by</th>
+              {offers.map((a) => <td key={a.id} className="py-2 pr-3"><input type="date" value={details(a).decideBy || ""} onChange={(e) => set(a, { decideBy: e.target.value || undefined })} aria-label={`Decision deadline for ${a.company}`} className="rounded-md border border-slate-300 bg-surface px-2 py-1" /></td>)}
+            </tr>
+            {keys.map((k) => (
+              <tr key={k}>
+                <th scope="row" className="py-2 pr-3 text-left font-medium text-slate-700">{RATING_LABELS[k]}</th>
+                {offers.map((a) => {
+                  const v = details(a).ratings?.[k];
+                  return (
+                    <td key={a.id} className="py-2 pr-3">
+                      <span role="radiogroup" aria-label={`${RATING_LABELS[k]} at ${a.company}`} className="inline-flex gap-0.5">
+                        {[1, 2, 3, 4, 5].map((n) => (
+                          <button key={n} role="radio" aria-checked={v === n} aria-label={`${n} of 5`} onClick={() => set(a, { ratings: { ...details(a).ratings, [k]: n } })} className={`h-6 w-6 rounded text-xs ${v && n <= v ? "bg-emerald-600 text-white" : "bg-surface text-slate-500 ring-1 ring-slate-300"}`}>{n}</button>
+                        ))}
+                      </span>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+            <tr>
+              <th scope="row" className="py-2 pr-3 text-left font-semibold text-slate-900">Score</th>
+              {offers.map((a, i) => <td key={a.id} className="py-2 pr-3 font-semibold tabular-nums text-slate-900">{scores[i]}/100{scores[i] === top && scores.filter((s) => s === top).length === 1 && <span className="ml-1.5 tag bg-emerald-100 text-emerald-800">leaning</span>}</td>)}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p className="mt-2 text-xs text-slate-500">Pay is read from the posting where it was listed; correct it to match your offer letter. A score is a way to think it through, not an answer. Write the accept or decline email from each offer&apos;s Next steps.</p>
+    </section>
   );
 }
