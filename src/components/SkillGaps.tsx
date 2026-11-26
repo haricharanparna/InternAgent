@@ -5,7 +5,7 @@ import { STRONG, skillGaps, whatIf } from "@/lib/skillGaps";
 import { projectFor, resourcesFor } from "@/lib/learning";
 import type { Job, Profile } from "@/lib/types";
 import { KEYS, useStored } from "@/lib/prefs";
-import { apiFetch, readJSON } from "@/lib/api";
+import { getFast } from "@/lib/api";
 
 const KEY = "internagent.learning";
 
@@ -19,8 +19,8 @@ export default function SkillGaps({ profile, onSearch, onAddSkill }: { profile: 
   const [open, setOpen] = useState<string | null>(null);
 
   useEffect(() => {
-    apiFetch("/api/jobs")
-      .then(async (r) => { const d = await readJSON(r); if (!r.ok) throw new Error(d.error); setJobs(d.jobs); })
+    getFast<{ jobs: Job[] }>("/api/jobs", (d) => setJobs(d.jobs))
+      .then((d) => setJobs(d.jobs))
       .catch((e) => setError((e as Error).message || "Couldn't load postings."));
     try { setLearned(JSON.parse(localStorage.getItem(KEY) || "[]")); } catch {}
   }, []);

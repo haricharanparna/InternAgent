@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getFast } from "./api";
 
 export type Count = { label: string; count: number };
 
@@ -46,9 +47,8 @@ export function useStats() {
     (async () => {
       for (let i = 0; i < 3 && !cancelled; i++) {
         try {
-          const r = await fetch("/api/stats");
-          const d = await r.json();
-          if (!r.ok) throw new Error(d.error);
+          // A saved copy shows at once; the fresh numbers replace it when they arrive.
+          const d = await getFast<Stats>("/api/stats", (fresh) => { cached = fresh; if (!cancelled) setStats(fresh); });
           cached = d;
           if (!cancelled) setStats(d);
           return;

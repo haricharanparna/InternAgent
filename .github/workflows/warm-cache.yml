@@ -1,0 +1,21 @@
+name: Warm cache after deploy
+# A new deploy empties Vercel's cache, so the first visitor would wait while every
+# job board is fetched again. Once Vercel reports a successful deploy, fetch the
+# two heavy endpoints here so visitors get the cached copy.
+on:
+  status:
+permissions: {}
+jobs:
+  warm:
+    if: github.event.state == 'success' && startsWith(github.event.context, 'Vercel') && github.event.branches[0].name == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fetch internships and stats
+        run: |
+          for path in api/jobs api/stats; do
+            for i in 1 2 3; do
+              code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 120 "https://intern-agent-gs6m.vercel.app/$path") && echo "$path: $code" && [ "$code" = "200" ] && break
+              sleep 10
+            done
+          done
