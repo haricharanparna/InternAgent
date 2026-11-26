@@ -1,6 +1,22 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { dropSentencesWithNewNumbers, keepKnown, numbersIn, onlyKnownNumbers, scrubFiller } from "../src/lib/honesty.ts";
+import { dropSentencesWithNewNumbers, keepKnown, listedOnly, numbersIn, onlyKnownNumbers, scrubFiller, softenListedSkills } from "../src/lib/honesty.ts";
+
+test("listedOnly finds skills no experience mentions", () => {
+  const profile = {
+    skills: ["R", "Tableau", "C++", "Excel"],
+    experiences: [{ title: "Survey project", bullets: ["Cleaned survey data in R and wrote C++ helpers"] }],
+  };
+  assert.deepEqual(listedOnly(profile), ["Tableau", "Excel"]);
+});
+
+test("softenListedSkills turns 'experience' claims into 'skills' for listed-only skills", () => {
+  const only = ["Tableau", "C++"];
+  assert.equal(softenListedSkills("Highlight your Tableau experience.", only), "Highlight your Tableau skills.");
+  assert.equal(softenListedSkills("Mention your experience with Tableau and SQL.", only), "Mention your Tableau skills and SQL.");
+  assert.equal(softenListedSkills("Show your C++ projects.", only), "Show your C++ skills.");
+  assert.equal(softenListedSkills("Highlight your R experience.", only), "Highlight your R experience.");
+});
 
 test("numbersIn normalizes commas and ignores trailing punctuation", () => {
   assert.deepEqual([...numbersIn("Served 1,200 users in 2024. GPA 3.5.")], ["1200", "2024", "3.5"]);

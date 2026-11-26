@@ -39,3 +39,24 @@ export function keepKnown(items: string[], allowed: string[]): string[] {
   }
   return out;
 }
+
+const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+// Skills on the resume's skills list that no experience title or bullet mentions.
+export function listedOnly(profile: { skills: string[]; experiences: { title: string; bullets: string[] }[] }): string[] {
+  const used = profile.experiences.flatMap((e) => [e.title, ...e.bullets]).join(" \n ").toLowerCase();
+  return profile.skills.filter((s) => !new RegExp(`(^|[^a-z0-9+#])${esc(s.toLowerCase())}(?![a-z0-9+#])`).test(used));
+}
+
+// "your Tableau experience" / "experience with Tableau" -> "your Tableau skills"
+// for skills that are only listed, never shown in an experience.
+export function softenListedSkills(text: string, skills: string[]): string {
+  let out = String(text || "");
+  for (const s of skills) {
+    const k = esc(s);
+    out = out
+      .replace(new RegExp(String.raw`\b(?:hands-on |prior |previous )?experience (?:with|in|using) ${k}(?![\w+#])`, "gi"), `${s} skills`)
+      .replace(new RegExp(String.raw`(?<![\w+#])${k} (?:experience|projects?|work)\b`, "gi"), `${s} skills`);
+  }
+  return out;
+}

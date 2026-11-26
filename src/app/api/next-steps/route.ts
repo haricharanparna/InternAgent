@@ -3,6 +3,7 @@ import { fail } from "@/lib/http";
 import { rateLimited } from "@/lib/rateLimit";
 import { generateJSON } from "@/lib/gemini";
 import type { NextStepsPlan, Opportunity, Profile } from "@/lib/types";
+import { listedOnly, softenListedSkills } from "@/lib/honesty";
 
 // Builds a checklist of what to do next for ONE chosen internship, based on
 // where the student is in the process (saved, applied, interview, ...).
@@ -20,7 +21,7 @@ const SCHEMA = {
       },
     },
     prep: { type: "array", items: { type: "string" } },
-    suggestedEmail: { type: "string", enum: ["outreach", "follow_up", "thank_you", "referral", "accept", "decline", "none"] },
+    suggestedEmail: { type: "string", enum: ["cover_letter", "outreach", "follow_up", "thank_you", "referral", "accept", "decline", "none"] },
   },
   required: ["headline", "steps", "prep", "suggestedEmail"],
 };
@@ -63,6 +64,9 @@ export async function POST(req: Request) {
       facts.push(left >= 0 ? `The interview is on ${fmt(d)} (${left} day${left === 1 ? "" : "s"} from today). Plan prep backwards from that date.` : `The interview was on ${fmt(d)}; a thank-you note is due if not sent.`);
     }
 
+    // Skills that never show up in an experience are "listed", not "experience".
+    const onlyListed = listedOnly(profile);
+
     const prompt = `You are a practical internship coach. Write the next steps for ONE specific internship the student chose.
 
 INTERNSHIP: ${o.title} at ${o.company} (${o.location})
@@ -70,6 +74,7 @@ POSTING LINK: ${o.url}
 POSTING DETAILS: ${(o.description || "(only the title is known)").slice(0, 1500)}
 STAGE: ${o.status}. ${STAGE_GOAL[o.status]}
 ${facts.join(" ")}
+SKILLS ONLY IN THE SKILLS LIST (not shown in any experience): ${JSON.stringify(onlyListed)}
 FIT: matched ${JSON.stringify(o.matched || [])}; missing ${JSON.stringify(o.missing || [])}
 STUDENT NOTES: ${o.notes?.trim() || "(none)"}
 STUDENT: ${JSON.stringify({ major: profile.major, school: profile.school, graduationYear: profile.graduationYear, skills: profile.skills, experiences: profile.experiences.map((e) => ({ title: e.title, organization: e.organization, bullets: e.bullets })) })}
@@ -82,14 +87,15 @@ Return:
 
 Rules:
 - Use only facts given above. Never invent deadlines, interview dates, recruiter names, salaries or company facts, and don't describe the hiring process (rolling deadlines, number of rounds) unless POSTING DETAILS says it. If no deadline is given, say to apply soon because roles can close early.
-- Only mention the student's experience as it is written. Never link a skill to a project unless that project's bullets mention it (a skill in the skills list alone doesn't mean it was used in a given project). Never suggest they claim skills they don't have; for missing skills, suggest how to learn or show them honestly (a small project, a course, saying they are learning it).
+- Only mention the student's experience as it is written. Never link a skill to a project unless that project's bullets mention it (a skill in the skills list alone doesn't mean it was used in a given project). For anything in SKILLS ONLY IN THE SKILLS LIST, never say "experience", "your work with" or "projects using" it: call it a skill they list, and if it matters for this role, suggest showing it with a small project or a resume bullet. Never suggest they claim skills they don't have; for missing skills, suggest how to learn or show them honestly (a small project, a free course). Don't assume they are already learning something; say "if you start learning X, you can mention that" instead.
 - Write to the student as "you". Be warm, direct and brief.`;
 
     const out = await generateJSON<Omit<NextStepsPlan, "status" | "generatedAt">>([{ text: prompt }], SCHEMA);
     const plan: NextStepsPlan = {
-      ...out,
-      steps: out.steps.slice(0, 6),
-      prep: out.prep.slice(0, 5),
+      headline: softenListedSkills(out.headline || "", onlyListed),
+      steps: (out.steps || []).slice(0, 6).map((s) => ({ ...s, title: softenListedSkills(s.title, onlyListed), detail: softenListedSkills(s.detail, onlyListed) })),
+      prep: (out.prep || []).slice(0, 5).map((p) => softenListedSkills(p, onlyListed)),
+      suggestedEmail: out.suggestedEmail,
       status: o.status,
       generatedAt: today.toISOString(),
     };
