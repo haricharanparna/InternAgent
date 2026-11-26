@@ -71,7 +71,7 @@ function Minutes({ label, value, onChange }: { label: string; value: number; onC
 }
 
 export default function Impact({ apps, onSearch }: { apps: TrackedApp[]; onSearch: () => void }) {
-  const { stats, error } = useStats();
+  const { stats, error, retry } = useStats();
   const [usage, setUsage] = useState<Usage>(EMPTY_USAGE);
   // Editable assumptions for the time-saved estimate.
   const [tTailor, setTTailor] = useState(30);
@@ -186,7 +186,7 @@ export default function Impact({ apps, onSearch }: { apps: TrackedApp[]; onSearc
             </span>
           )}
         </h2>
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-red-600">{error} <button onClick={retry} className="font-semibold underline underline-offset-2">Try again</button></p>}
         {!stats && !error && (
           <div className="space-y-3" aria-label="Loading live numbers">
             <div className="skeleton h-20 w-full" />
