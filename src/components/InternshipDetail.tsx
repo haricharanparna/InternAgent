@@ -63,6 +63,8 @@ export default function InternshipDetail({ job: listed, profile, allJobs, tracke
   const [job, setJob] = useState<ScoredJob>(listed);
   const [live, setLive] = useState<Live>({ status: listed.source === "simplify" ? "unknown" : "loading" });
   const [explain, setExplain] = useState(false);
+  const [watch, setWatch] = useStored<string[]>(KEYS.watch, []);
+  const watching = watch.includes(listed.company);
   const dialog = useRef<HTMLDivElement>(null);
 
   // Fetch the full, current posting from the company's own job board.
@@ -144,6 +146,7 @@ export default function InternshipDetail({ job: listed, profile, allJobs, tracke
               <button onClick={() => onSave(job, planCache.get(job.id))} className="btn-secondary">＋ Save to Applications</button>
             )}
             <button onClick={() => onTailor(job)} className="btn-secondary">✍️ Tailor my resume</button>
+            <button onClick={() => setWatch((w) => (w.includes(job.company) ? w.filter((c) => c !== job.company) : [...w, job.company].slice(-30)))} aria-pressed={watching} className="btn-secondary" title="Get a notification when this company posts new internships">{watching ? `★ Watching ${job.company}` : `☆ Watch ${job.company}`}</button>
             {onCompare && <button onClick={onCompare} aria-pressed={!!compared} className="btn-secondary">{compared ? "✓ In comparison" : "⇄ Compare"}</button>}
           </div>
           {trust.flags.length > 0 && (

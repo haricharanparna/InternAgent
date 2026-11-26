@@ -72,6 +72,7 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
   const [viewed, setViewed] = useStored<string[]>(KEYS.viewed, []);
   const [hidden, setHidden] = useStored<string[]>(KEYS.hidden, []);
   const [searches, setSearches] = useStored<SavedSearch[]>(KEYS.searches, []);
+  const [watch, setWatch] = useStored<string[]>(KEYS.watch, []);
   const [showHidden, setShowHidden] = useState(false);
   const [length, setLength] = useState<"" | "short" | "long">("");
   const [eligibleOnly, setEligibleOnly] = useState(false);
@@ -146,7 +147,16 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
           const before = new Set(seen);
           const fresh = ranked.filter((j) => !before.has(j.id)).map((j) => j.id);
           setNewIds(new Set(fresh));
-          try { localStorage.setItem(KEYS.newCount, JSON.stringify({ count: fresh.length, at: new Date().toISOString() })); } catch {}
+          try { localStorage.setItem(KEYS.newCount, JSON.stringify({ count: fresh.length, at: new Date().toISOString() })); window.dispatchEvent(new CustomEvent("internagent:prefs", { detail: KEYS.newCount })); } catch {}
+          // New postings from companies the student watches, for the notification bell.
+          try {
+            const watched: string[] = JSON.parse(localStorage.getItem(KEYS.watch) || "[]");
+            const freshSet = new Set(fresh);
+            const at = new Date().toISOString();
+            const hits = watched.map((c) => ({ company: c, count: ranked.filter((j) => j.company === c && freshSet.has(j.id)).length, at })).filter((h) => h.count > 0);
+            localStorage.setItem(KEYS.watchNew, JSON.stringify(hits));
+            window.dispatchEvent(new CustomEvent("internagent:prefs", { detail: KEYS.watchNew }));
+          } catch {}
         }
         localStorage.setItem(SEEN_KEY, JSON.stringify(ranked.map((j) => j.id)));
       } catch {}
@@ -368,6 +378,23 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
         onApply={(s) => { setQuery(s.query); setCategory(s.category); setWhere(s.where === "near" && !place ? "all" : s.where); setPaidOnly(s.paidOnly); setSponsorOnly(s.sponsorOnly); setLength(s.length); setEligibleOnly(s.eligibleOnly); setSort(s.sort as typeof sort); setShown(PAGE); }}
         onDelete={(id) => setSearches((list) => list.filter((x) => x.id !== id))}
       />
+      {watch.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 text-sm">
+          <span className="text-slate-500">Companies you watch:</span>
+          {watch.map((c) => {
+            const open = jobs.filter((j) => j.company === c);
+            const fresh = open.filter((j) => newIds.has(j.id)).length;
+            return (
+              <span key={c} className="inline-flex items-center overflow-hidden rounded-md border border-slate-200">
+                <button onClick={() => { setQuery(c); setShown(PAGE); }} className="px-2 py-1 text-slate-700 hover:bg-slate-50" title={`Show ${c}'s internships`}>
+                  {c} <span className="text-slate-500">· {open.length} open</span>{fresh > 0 && <b className="text-emerald-700"> · {fresh} new</b>}
+                </button>
+                <button onClick={() => setWatch((w) => w.filter((x) => x !== c))} aria-label={`Stop watching ${c}`} className="border-l border-slate-200 px-1.5 py-1 text-slate-400 hover:text-slate-700">×</button>
+              </span>
+            );
+          })}
+        </div>
+      )}
       {viewed.some((id) => jobs.some((j) => j.id === id)) && (
         <div className="flex flex-wrap items-center gap-1.5 text-sm">
           <span className="text-slate-500">Recently viewed:</span>

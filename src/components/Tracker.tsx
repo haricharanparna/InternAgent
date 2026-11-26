@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { FOLLOW_UP_DAYS, STATUSES, followUpDue, type Status, type TrackedApp } from "@/lib/tracker";
 import { buildIcs, download, eventsFor, toCsv } from "@/lib/calendar";
 import AddJobForm from "./AddJobForm";
-import type { ScoredJob } from "@/lib/types";
+import type { Profile, ScoredJob } from "@/lib/types";
+import { keywordMatch } from "@/lib/keywords";
 
 const GOAL_KEY = "internagent.weeklyGoal";
 
@@ -333,7 +334,14 @@ function Pipeline({ apps }: { apps: TrackedApp[] }) {
   const weeks = Array.from({ length: 8 }, (_, i) => sent.filter((a) => { const t = now - new Date(a.appliedAt!).getTime(); return t >= (7 - i) * week && t < (8 - i) * week; }).length);
   const maxWeek = Math.max(1, ...weeks);
   const gaps = new Map<string, number>();
-  for (const a of apps) for (const m of a.missing || []) gaps.set(m, (gaps.get(m) || 0) + 1);
+  // AI fit scores when the job was scored; otherwise the free keyword match on the saved posting.
+  let profile: Profile | null = null;
+  try { profile = JSON.parse(localStorage.getItem("internagent.profile") || "null"); } catch {}
+  for (const a of apps) {
+    const missing = a.missing?.length ? a.missing
+      : profile && a.description ? keywordMatch({ id: a.id, title: a.title, company: a.company, location: a.location, url: a.url, source: "greenhouse", description: a.description }, profile)?.missing || [] : [];
+    for (const m of missing) gaps.set(m, (gaps.get(m) || 0) + 1);
+  }
   const topGaps = [...gaps.entries()].sort((x, y) => y[1] - x[1]).slice(0, 6);
   if (!sent.length && !topGaps.length) return null;
   return (
@@ -367,7 +375,7 @@ function Pipeline({ apps }: { apps: TrackedApp[] }) {
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Most-asked skills you don&apos;t show</p>
           {topGaps.length ? (
             <ul className="mt-2 space-y-1 text-sm">{topGaps.map(([s, n]) => <li key={s} className="flex justify-between"><span className="text-slate-700">{s}</span><span className="tabular-nums text-slate-500">{n} posting{n === 1 ? "" : "s"}</span></li>)}</ul>
-          ) : <p className="mt-2 text-sm text-slate-500">Score your saved jobs with AI to see this.</p>}
+          ) : <p className="mt-2 text-sm text-slate-500">Save internships with full postings to see this.</p>}
         </div>
       </div>
       <p className="mt-3 text-[11px] text-slate-500">Percentages compare each step with the one before. Small numbers swing a lot, so read them as a rough guide.</p>

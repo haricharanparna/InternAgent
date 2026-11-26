@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Atkinson_Hyperlegible, Newsreader, Public_Sans } from "next/font/google";
-import { themeInitScript } from "@/components/ThemeToggle";
+import { themeInitScript } from "@/lib/theme";
 import { a11yInitScript } from "@/lib/a11y";
 import "./globals.css";
 

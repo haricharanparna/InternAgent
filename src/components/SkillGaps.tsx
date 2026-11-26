@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { STRONG, skillGaps, whatIf } from "@/lib/skillGaps";
 import { projectFor, resourcesFor } from "@/lib/learning";
 import type { Job, Profile } from "@/lib/types";
+import { KEYS, useStored } from "@/lib/prefs";
 
 const KEY = "internagent.learning";
 
@@ -134,6 +135,8 @@ export default function SkillGaps({ profile, onSearch }: { profile: Profile | nu
             )}
           </div>
 
+          {learned.length > 0 && <LearningLog skills={learned} />}
+
           {plan.length > 0 && (
             <div>
               <h2 className="section-title">Your 4-week plan</h2>
@@ -166,4 +169,46 @@ function weeks(skills: string[]) {
       : { title: `Learn the basics of ${b}`, detail: `Work through ${first(b).name}, then use ${b} in your week-2 project if it fits.` },
     { title: "Show it and update your resume", detail: "Put the project on GitHub with a README, add one honest bullet to your resume, then re-run this page to see your new matches." },
   ];
+}
+
+type LogEntry = { skill: string; h: number; at: string };
+const GOAL = 20; // hours: the 4-week plan at about 5 hours a week
+
+// Hours spent on each skill you're learning, logged by you and kept in this browser.
+function LearningLog({ skills }: { skills: string[] }) {
+  const [log, setLog] = useStored<LogEntry[]>(KEYS.hours, []);
+  const week = Date.now() - 7 * 86_400_000;
+  const total = (s: string) => log.filter((e) => e.skill === s).reduce((n, e) => n + e.h, 0);
+  const thisWeek = log.filter((e) => new Date(e.at).getTime() >= week).reduce((n, e) => n + e.h, 0);
+  const add = (skill: string, h: number) => setLog((l) => [...l, { skill, h, at: new Date().toISOString() }].slice(-500));
+  const undo = (skill: string) => setLog((l) => { const i = l.map((e) => e.skill).lastIndexOf(skill); return i < 0 ? l : [...l.slice(0, i), ...l.slice(i + 1)]; });
+  return (
+    <div>
+      <h2 className="section-title">Learning log</h2>
+      <p className="mt-1 text-sm text-slate-500">
+        Log time as you study. <b className="text-slate-700">{thisWeek} hour{thisWeek === 1 ? "" : "s"}</b> this week. About {GOAL} hours (5 a week for 4 weeks) is enough for a first project.
+      </p>
+      <ul className="mt-3 space-y-3">
+        {skills.map((s) => {
+          const h = total(s);
+          return (
+            <li key={s} className="rounded-md border border-slate-200 p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                <span className="font-medium text-slate-900">{s}</span>
+                <span className="flex items-center gap-1.5">
+                  <span className="tabular-nums text-slate-600">{h} / {GOAL} h</span>
+                  {[0.5, 1, 2].map((n) => <button key={n} onClick={() => add(s, n)} className="rounded-md border border-slate-300 px-2 py-0.5 text-xs text-slate-700 hover:border-slate-500" aria-label={`Log ${n} hour${n === 1 ? "" : "s"} on ${s}`}>+{n}h</button>)}
+                  {h > 0 && <button onClick={() => undo(s)} className="text-xs text-slate-500 underline underline-offset-2">Undo</button>}
+                </span>
+              </div>
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200" role="progressbar" aria-label={`${s} hours`} aria-valuenow={h} aria-valuemin={0} aria-valuemax={GOAL}>
+                <div className={`h-full rounded-full ${h >= GOAL ? "bg-emerald-500" : "bg-blue-500"}`} style={{ width: `${Math.min(100, (h / GOAL) * 100)}%` }} />
+              </div>
+              {h >= GOAL && <p className="mt-1.5 text-xs text-emerald-700">Goal reached. Finish your project, then add {s} to your resume if you can really use it.</p>}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
 }

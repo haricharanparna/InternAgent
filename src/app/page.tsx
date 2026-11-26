@@ -12,6 +12,7 @@ import Impact from "@/components/Impact";
 import HowItWorks from "@/components/HowItWorks";
 import OpportunityPanel from "@/components/OpportunityPanel";
 import SkillGaps from "@/components/SkillGaps";
+import Onboarding from "@/components/Onboarding";
 import Notifications from "@/components/Notifications";
 import ResumeBuilder from "@/components/ResumeBuilder";
 import { followUpDue, useTracker } from "@/lib/tracker";
@@ -123,6 +124,7 @@ export default function Home() {
           )}
 
           {profile && <h1 className="sr-only">Internship search for {profile.name || "you"}</h1>}
+          {profile && <Onboarding onTab={(t) => { setTab(t); window.scrollTo({ top: 0 }); }} />}
           <ResumeUpload profile={profile} onProfile={updateProfile} />
           {!profile && (
             <p className="-mt-6 text-sm text-slate-600">

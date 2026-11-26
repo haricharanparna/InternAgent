@@ -84,7 +84,7 @@ export function useTracker() {
               location: job.location,
               url: job.url,
               fitScore: job.fit?.score,
-              description: job.description.slice(0, 1500),
+              description: job.description.slice(0, 6000), // enough to reach the requirements, past the company intro
               matched: job.fit?.matched,
               missing: job.fit?.missing,
               status: "saved",

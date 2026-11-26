@@ -1,6 +1,7 @@
 "use client";
 
 import ProfileEditor from "./ProfileEditor";
+import ResumeCheckPanel from "./ResumeCheckPanel";
 
 import { useRef, useState } from "react";
 import { LogoMark } from "./Logo";
@@ -102,6 +103,7 @@ export default function ResumeUpload({ profile, onProfile }: Props) {
             </div>
           </div>
           <ProfileEditor profile={profile} onProfile={onProfile} />
+          <ResumeCheckPanel profile={profile} />
         </div>
       </section>
     );
