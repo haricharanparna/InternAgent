@@ -53,6 +53,15 @@ const KEY = "internagent.tracker";
 export const FOLLOW_UP_DAYS = 7;
 
 // Applied this many days ago with no reply yet → nudge the student to follow up.
+export const QUIET_DAYS = 30;
+
+// Applied this long ago with no reply: most companies that are still interested reply by now.
+export function quietDays(app: TrackedApp, now = Date.now()) {
+  if (app.status !== "applied" || !app.appliedAt) return 0;
+  const days = Math.floor((now - new Date(app.appliedAt).getTime()) / 86_400_000);
+  return days >= QUIET_DAYS ? days : 0;
+}
+
 export function followUpDue(app: TrackedApp, now = Date.now()) {
   if (app.status !== "applied" || !app.appliedAt) return false;
   return now - new Date(app.appliedAt).getTime() >= FOLLOW_UP_DAYS * 86_400_000;

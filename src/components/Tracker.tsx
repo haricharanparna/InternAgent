@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { FOLLOW_UP_DAYS, STATUSES, followUpDue, type Status, type TrackedApp } from "@/lib/tracker";
+import { FOLLOW_UP_DAYS, STATUSES, followUpDue, quietDays, type Status, type TrackedApp } from "@/lib/tracker";
 import { buildIcs, download, eventsFor, toCsv } from "@/lib/calendar";
 import AddJobForm from "./AddJobForm";
 import type { Profile, ScoredJob } from "@/lib/types";
@@ -188,7 +188,8 @@ export default function Tracker({ apps, onUpdate, onRemove, onBrowse, onOpen, on
 
 function Card({ app, onUpdate, onRemove, onOpen }: { app: TrackedApp; onUpdate: Props["onUpdate"]; onRemove: Props["onRemove"]; onOpen: Props["onOpen"] }) {
   const [open, setOpen] = useState(false);
-  const due = followUpDue(app);
+  const quiet = quietDays(app);
+  const due = followUpDue(app) && !quiet;
 
   return (
     <li
@@ -209,6 +210,13 @@ function Card({ app, onUpdate, onRemove, onOpen }: { app: TrackedApp; onUpdate: 
         {app.appliedAt ? `Applied ${fmtDate(app.appliedAt)}` : `Saved ${fmtDate(app.savedAt)}`}
       </p>
       {due && <p className="mt-1.5 rounded bg-amber-50 px-2 py-1 text-xs text-amber-800">Follow-up due</p>}
+      {quiet > 0 && (
+        <div className="mt-1.5 rounded bg-slate-100 px-2 py-1 text-xs text-slate-600">
+          No reply in {quiet} days. Send one last follow-up, or{" "}
+          <button onClick={() => onUpdate(app.id, { status: "rejected", notes: `${app.notes ? app.notes + "\n" : ""}No response after ${quiet} days.` })} className="font-medium text-slate-800 underline underline-offset-2">move it to Rejected</button>
+          {" "}to keep your board current.
+        </div>
+      )}
       {app.interviewAt && daysUntil(app.interviewAt) >= 0 && (
         <p className="mt-1.5 rounded bg-blue-50 px-2 py-1 text-xs text-blue-800">
           Interview {inDays(daysUntil(app.interviewAt))}, {new Date(app.interviewAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}

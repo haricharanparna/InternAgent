@@ -11,6 +11,7 @@ import { printLetter } from "@/lib/resumePdf";
 import { markReady } from "@/lib/readiness";
 import { ReadinessCard } from "./ReadinessCard";
 import { CompanyResearch, ResumeUsed } from "./ApplyKit";
+import { printPacket } from "@/lib/packet";
 
 type Props = {
   app: TrackedApp;
@@ -76,7 +77,8 @@ export default function OpportunityPanel({ app, profile, onUpdate, onClose }: Pr
               <h2 className="mt-0.5 text-xl font-medium leading-snug text-slate-900">{app.title}</h2>
               <p className="text-sm text-slate-600">
                 {app.company} · {app.location} ·{" "}
-                <a href={app.url} target="_blank" rel="noreferrer" className="text-blue-600 underline underline-offset-2">View posting ↗</a>
+                <a href={app.url} target="_blank" rel="noreferrer" className="text-blue-600 underline underline-offset-2">View posting ↗</a>{" "}·{" "}
+                <button onClick={() => printPacket(app, profile)} className="text-blue-600 underline underline-offset-2" title="One page with key facts, your research, practice answers, questions to ask and the resume you sent">🖨 Interview packet</button>
               </p>
             </div>
             <button onClick={onClose} className="btn-secondary shrink-0 px-3 py-1.5" aria-label="Close">✕</button>
