@@ -16,6 +16,7 @@ type Props = {
   apps: TrackedApp[];
   onUpdate: (id: string, patch: Partial<TrackedApp>) => void;
   onRemove: (id: string) => void;
+  onRestore?: (app: TrackedApp, index: number) => void;
   onBrowse: () => void;
   onOpen: (id: string) => void;
   onAdd: (job: ScoredJob) => void;
@@ -34,7 +35,25 @@ const daysUntil = (iso: string) => {
 };
 const inDays = (n: number) => (n === 0 ? "today" : n === 1 ? "tomorrow" : n < 0 ? `${-n} day${n === -1 ? "" : "s"} ago` : `in ${n} days`);
 
-export default function Tracker({ apps, onUpdate, onRemove, onBrowse, onOpen, onAdd }: Props) {
+export default function Tracker({ apps, onUpdate, onRemove: removeNow, onRestore, onBrowse, onOpen, onAdd }: Props) {
+  // Removing keeps the application for a few seconds so it can be undone.
+  const [removed, setRemoved] = useState<{ app: TrackedApp; index: number }[] | null>(null);
+  useEffect(() => {
+    if (!removed) return;
+    const t = setTimeout(() => setRemoved(null), 8000);
+    return () => clearTimeout(t);
+  }, [removed]);
+  const onRemove = (id: string) => {
+    const index = apps.findIndex((a) => a.id === id);
+    if (index >= 0) setRemoved((r) => [...(r || []), { app: apps[index], index }]);
+    removeNow(id);
+  };
+  const undoToast = removed && onRestore && (
+    <div role="status" className="fixed bottom-24 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-md bg-slate-900 px-4 py-2.5 text-sm text-white shadow-lg">
+      <span className="max-w-[60vw] truncate">Removed {removed.length === 1 ? `${removed[0].app.title} at ${removed[0].app.company}` : `${removed.length} applications`}.</span>
+      <button onClick={() => { [...removed].sort((x, y) => x.index - y.index).forEach((r) => onRestore(r.app, r.index)); setRemoved(null); }} className="font-semibold text-blue-300 underline underline-offset-2">Undo</button>
+    </div>
+  );
   const [dragOver, setDragOver] = useState<Status | null>(null);
   const [view, setView] = useState<"board" | "table">("board");
   const [search, setSearch] = useState("");
@@ -60,6 +79,7 @@ export default function Tracker({ apps, onUpdate, onRemove, onBrowse, onOpen, on
           <button onClick={() => setAdding(true)} className="btn-secondary">＋ Add a job from anywhere</button>
         </div>
         {addForm && <div className="mt-6 text-left">{addForm}</div>}
+        {undoToast}
       </section>
     );
   }
@@ -87,6 +107,7 @@ export default function Tracker({ apps, onUpdate, onRemove, onBrowse, onOpen, on
 
   return (
     <section className="space-y-4">
+      {undoToast}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="font-serif text-3xl font-medium text-slate-900">Your applications</h1>
         <div className="flex flex-wrap gap-2">
@@ -132,6 +153,7 @@ export default function Tracker({ apps, onUpdate, onRemove, onBrowse, onOpen, on
 
       <Offers apps={apps} onUpdate={onUpdate} />
       <Pipeline apps={apps} />
+      <Network apps={apps} onOpen={onOpen} />
 
       <div className="flex flex-wrap items-center gap-2">
         <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search your applications" aria-label="Search your applications" className="field w-auto min-w-0 flex-1 py-1.5 sm:max-w-xs" />
@@ -150,7 +172,7 @@ export default function Tracker({ apps, onUpdate, onRemove, onBrowse, onOpen, on
         </div>
       )}
 
-      {view === "table" ? <AppTable apps={shown} onUpdate={onUpdate} onOpen={onOpen} /> : (
+      {view === "table" ? <AppTable apps={shown} onUpdate={onUpdate} onOpen={onOpen} onRemove={onRemove} /> : (
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-7">
         {STATUSES.map((col) => {
           const items = shown.filter((a) => a.status === col.id);
@@ -297,36 +319,88 @@ function WeeklyGoal({ apps, goal, onGoal }: { apps: TrackedApp[]; goal: number; 
 }
 
 // Table view: every application in one sortable-at-a-glance list.
-function AppTable({ apps, onUpdate, onOpen }: { apps: TrackedApp[]; onUpdate: (id: string, p: Partial<TrackedApp>) => void; onOpen: (id: string) => void }) {
+// Table view: click a header to sort; tick rows to change their stage or remove them together.
+type Col = { key: string; label: string; value: (a: TrackedApp) => string | number };
+const STAGE_ORDER = (a: TrackedApp) => STATUSES.findIndex((s) => s.id === a.status);
+const COLS: Col[] = [
+  { key: "company", label: "Company", value: (a) => a.company.toLowerCase() },
+  { key: "role", label: "Role", value: (a) => a.title.toLowerCase() },
+  { key: "stage", label: "Stage", value: STAGE_ORDER },
+  { key: "fit", label: "Fit", value: (a) => a.fitScore ?? -1 },
+  { key: "applied", label: "Applied", value: (a) => a.appliedAt || "" },
+  { key: "deadline", label: "Deadline", value: (a) => a.deadline || "" },
+  { key: "interview", label: "Interview", value: (a) => a.interviewAt || "" },
+  { key: "steps", label: "Steps", value: (a) => (a.plan ? (a.plan.done || []).length / Math.max(1, a.plan.steps.length) : -1) },
+  { key: "resume", label: "Resume", value: (a) => (a.resumeUsed ? a.resumeUsed.kind : "") },
+];
+
+function AppTable({ apps, onUpdate, onOpen, onRemove }: { apps: TrackedApp[]; onUpdate: (id: string, p: Partial<TrackedApp>) => void; onOpen: (id: string) => void; onRemove: (id: string) => void }) {
+  const [sort, setSort] = useState<{ key: string; dir: 1 | -1 }>({ key: "applied", dir: -1 });
+  const [picked, setPicked] = useState<string[]>([]);
   if (!apps.length) return <p className="text-sm text-slate-500">No applications match.</p>;
-  const rows = [...apps].sort((a, b) => (b.appliedAt || b.savedAt).localeCompare(a.appliedAt || a.savedAt));
+  const col = COLS.find((c) => c.key === sort.key)!;
+  const rows = [...apps].sort((a, b) => {
+    const x = col.value(a), y = col.value(b);
+    const empty = (v: string | number) => v === "" || v === -1;
+    if (empty(x) !== empty(y)) return empty(x) ? 1 : -1; // blanks always last
+    return (x < y ? -1 : x > y ? 1 : 0) * sort.dir;
+  });
+  const sel = picked.filter((id) => apps.some((a) => a.id === id));
+  const all = sel.length === rows.length;
+  const toggle = (id: string) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
   return (
-    <div className="overflow-x-auto rounded-md border border-slate-200">
-      <table className="w-full min-w-[800px] text-sm">
-        <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-          <tr>{["Company", "Role", "Stage", "Fit", "Applied", "Deadline", "Interview", "Steps", "Resume", ""].map((h) => <th key={h} scope="col" className="px-3 py-2 font-semibold">{h}</th>)}</tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100">
-          {rows.map((a) => (
-            <tr key={a.id}>
-              <td className="px-3 py-2 font-medium text-slate-900">{a.company}</td>
-              <td className="max-w-[16rem] truncate px-3 py-2 text-slate-700" title={a.title}>{a.title}</td>
-              <td className="px-3 py-2">
-                <select value={a.status} onChange={(e) => onUpdate(a.id, { status: e.target.value as Status })} aria-label={`Stage for ${a.title}`} className="rounded-md border border-slate-300 bg-surface px-1.5 py-1 text-xs">
-                  {STATUSES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
-                </select>
-              </td>
-              <td className="px-3 py-2 tabular-nums text-slate-700">{a.fitScore ?? "—"}</td>
-              <td className="px-3 py-2 text-slate-700">{a.appliedAt?.slice(0, 10) || "—"}</td>
-              <td className="px-3 py-2 text-slate-700">{a.deadline || "—"}</td>
-              <td className="px-3 py-2 text-slate-700">{a.interviewAt?.replace("T", " ") || "—"}</td>
-              <td className="px-3 py-2 tabular-nums text-slate-700">{a.plan ? `${(a.plan.done || []).length}/${a.plan.steps.length}` : "—"}</td>
-              <td className="px-3 py-2 text-slate-700">{a.resumeUsed ? (a.resumeUsed.kind === "original" ? "Original" : `Tailored ${a.resumeUsed.at?.slice(5, 10).replace("-", "/")}`) : "—"}</td>
-              <td className="px-3 py-2"><button onClick={() => onOpen(a.id)} className="text-blue-700 underline underline-offset-2">Open</button></td>
+    <div className="space-y-2">
+      {sel.length > 0 && (
+        <div role="toolbar" aria-label="Selected applications" className="flex flex-wrap items-center gap-2 rounded-md bg-blue-50 px-3 py-2 text-sm">
+          <b className="text-slate-900">{sel.length} selected</b>
+          <label className="flex items-center gap-1.5 text-slate-700">Move to
+            <select value="" onChange={(e) => { const st = e.target.value as Status; if (st) { sel.forEach((id) => onUpdate(id, { status: st })); setPicked([]); } }} className="rounded-md border border-slate-300 bg-surface px-1.5 py-1 text-xs">
+              <option value="">Choose a stage…</option>
+              {STATUSES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+            </select>
+          </label>
+          <button onClick={() => { sel.forEach((id) => onRemove(id)); setPicked([]); }} className="text-rose-700 underline underline-offset-2">Remove</button>
+          <button onClick={() => setPicked([])} className="ml-auto text-slate-600 underline underline-offset-2">Clear</button>
+        </div>
+      )}
+      <div className="overflow-x-auto rounded-md border border-slate-200">
+        <table className="w-full min-w-[840px] text-sm">
+          <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+            <tr>
+              <th scope="col" className="w-8 px-3 py-2"><input type="checkbox" checked={all} onChange={() => setPicked(all ? [] : rows.map((r) => r.id))} aria-label="Select all" className="h-4 w-4 accent-blue-600" /></th>
+              {COLS.map((c) => (
+                <th key={c.key} scope="col" aria-sort={sort.key === c.key ? (sort.dir === 1 ? "ascending" : "descending") : "none"} className="px-3 py-2 font-semibold">
+                  <button onClick={() => setSort((s) => ({ key: c.key, dir: s.key === c.key ? (s.dir === 1 ? -1 : 1) : 1 }))} className="inline-flex items-center gap-1 uppercase hover:text-slate-900">
+                    {c.label}<span aria-hidden className="text-[10px]">{sort.key === c.key ? (sort.dir === 1 ? "▲" : "▼") : ""}</span>
+                  </button>
+                </th>
+              ))}
+              <th scope="col" className="px-3 py-2"><span className="sr-only">Open</span></th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {rows.map((a) => (
+              <tr key={a.id} className={sel.includes(a.id) ? "bg-blue-50/40" : ""}>
+                <td className="px-3 py-2"><input type="checkbox" checked={sel.includes(a.id)} onChange={() => toggle(a.id)} aria-label={`Select ${a.title} at ${a.company}`} className="h-4 w-4 accent-blue-600" /></td>
+                <td className="px-3 py-2 font-medium text-slate-900">{a.company}</td>
+                <td className="max-w-[16rem] truncate px-3 py-2 text-slate-700" title={a.title}>{a.title}</td>
+                <td className="px-3 py-2">
+                  <select value={a.status} onChange={(e) => onUpdate(a.id, { status: e.target.value as Status })} aria-label={`Stage for ${a.title}`} className="rounded-md border border-slate-300 bg-surface px-1.5 py-1 text-xs">
+                    {STATUSES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+                  </select>
+                </td>
+                <td className="px-3 py-2 tabular-nums text-slate-700">{a.fitScore ?? "—"}</td>
+                <td className="px-3 py-2 text-slate-700">{a.appliedAt?.slice(0, 10) || "—"}</td>
+                <td className="px-3 py-2 text-slate-700">{a.deadline || "—"}</td>
+                <td className="px-3 py-2 text-slate-700">{a.interviewAt?.replace("T", " ") || "—"}</td>
+                <td className="px-3 py-2 tabular-nums text-slate-700">{a.plan ? `${(a.plan.done || []).length}/${a.plan.steps.length}` : "—"}</td>
+                <td className="px-3 py-2 text-slate-700">{a.resumeUsed ? (a.resumeUsed.kind === "original" ? "Original" : `Tailored ${a.resumeUsed.at?.slice(5, 10).replace("-", "/")}`) : "—"}</td>
+                <td className="px-3 py-2"><button onClick={() => onOpen(a.id)} className="text-blue-700 underline underline-offset-2">Open</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -462,5 +536,32 @@ function Offers({ apps, onUpdate }: { apps: TrackedApp[]; onUpdate: (id: string,
       </div>
       <p className="mt-2 text-xs text-slate-500">Pay is read from the posting where it was listed; correct it to match your offer letter. A score is a way to think it through, not an answer. Write the accept or decline email from each offer&apos;s Next steps.</p>
     </section>
+  );
+}
+
+// Everyone you've added under People, across all applications, oldest contact first.
+function Network({ apps, onOpen }: { apps: TrackedApp[]; onOpen: (id: string) => void }) {
+  const people = apps.flatMap((a) => (a.contacts || []).map((c) => ({ c, a })));
+  if (!people.length) return null;
+  const days = (iso?: string) => (iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000) : null);
+  const rows = [...people].sort((x, y) => (days(y.c.lastContacted) ?? 9999) - (days(x.c.lastContacted) ?? 9999));
+  return (
+    <details className="rounded-md border border-slate-200 px-4 py-3">
+      <summary className="cursor-pointer text-sm"><span className="font-semibold text-slate-900">Your network</span><span className="text-slate-500"> · {people.length} {people.length === 1 ? "person" : "people"}</span></summary>
+      <ul className="mt-3 divide-y divide-slate-100 text-sm">
+        {rows.map(({ c, a }) => {
+          const d = days(c.lastContacted);
+          return (
+            <li key={a.id + c.id} className="flex flex-wrap items-center gap-x-3 gap-y-0.5 py-2">
+              <span className="min-w-0 flex-1"><b className="text-slate-900">{c.name}</b>{c.role && <span className="text-slate-600">, {c.role}</span>}<span className="block truncate text-xs text-slate-500">{a.company} · {a.title}</span></span>
+              <span className={`text-xs ${d === null ? "text-slate-500" : d >= 21 ? "text-amber-700" : "text-slate-500"}`}>{d === null ? "Not contacted yet" : d === 0 ? "Talked today" : `${d} day${d === 1 ? "" : "s"} ago`}</span>
+              {c.email && <a href={`mailto:${c.email}`} className="text-xs text-blue-700 underline underline-offset-2">Email</a>}
+              {c.link && /^https?:\/\//.test(c.link) && <a href={c.link} target="_blank" rel="noreferrer" className="text-xs text-blue-700 underline underline-offset-2">Profile ↗</a>}
+              <button onClick={() => onOpen(a.id)} className="text-xs text-blue-700 underline underline-offset-2">Open application</button>
+            </li>
+          );
+        })}
+      </ul>
+    </details>
   );
 }

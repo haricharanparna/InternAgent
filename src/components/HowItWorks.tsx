@@ -341,7 +341,22 @@ export default function HowItWorks({ profile }: { profile: Profile | null }) {
         </Formula>
       </Section>
 
-      <Section n={10} title="Reliability">
+      <Section n={10} title="Resume check, offers, similar roles and search">
+        <P>More plain code, no AI:</P>
+        <Formula>
+          resume check = 100 − 12 per fix − 5 per tip · fixes: no email, no school, an experience with no bullets, bullets starting &quot;responsible for / helped with / worked on&quot; · tips: &quot;I/my/we&quot;, bullets over 35 or under 5 words, under 30% of bullets with a number, 3+ bullets starting with the same verb
+          <br />
+          offer score = 30 × (your pay ÷ best pay you entered) + 70 × (average of your 1–5 ratings − 1) ÷ 4 · an unrated item counts as 3
+          <br />
+          similar internships = other companies&apos; roles sharing ≥ 40% of title words (season, year and &quot;intern&quot; ignored; SWE = software), one per company
+          <br />
+          search: pay, remote/hybrid/on-site, field, season and year, visa and beginner are read from your words; -word / not / except / without leave roles out; analyst, scientist, designer, researcher and developer must also be in the title
+          <br />
+          same internship = same link, or same company and title once season, year and &quot;intern&quot; are set aside · quiet = applied 30+ days with no reply · check in with a contact after 21 days
+        </Formula>
+      </Section>
+
+      <Section n={11} title="Reliability">
         <ul className="max-w-3xl list-disc space-y-1.5 pl-5 text-[15px] leading-relaxed text-slate-700">
           <li>
             <b>Model fallback:</b> {models.length ? models.join(" → ") : "three Gemini models"}. If one is overloaded (429, 500,
@@ -354,7 +369,7 @@ export default function HowItWorks({ profile }: { profile: Profile | null }) {
         </ul>
       </Section>
 
-      <Section n={11} title="API reference">
+      <Section n={12} title="API reference">
         <div className="overflow-x-auto rounded-md border border-slate-200">
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { Profile, TailoredResume } from "./types";
+import { safeSet } from "./storage";
 
 // Tailored resumes you made, kept per internship in this browser so you can
 // see (and re-download) exactly which version you sent.
@@ -23,8 +24,7 @@ export function saveVersion(jobId: string, resume: TailoredResume, profile: Prof
     // Keep the newest jobs only, so storage stays small.
     const ids = Object.keys(all).sort((a, b) => all[b][0].at.localeCompare(all[a][0].at));
     for (const id of ids.slice(MAX_JOBS)) delete all[id];
-    localStorage.setItem(KEY, JSON.stringify(all));
-    window.dispatchEvent(new Event(EVENT));
+    if (safeSet(KEY, JSON.stringify(all))) window.dispatchEvent(new Event(EVENT));
   } catch {}
 }
 

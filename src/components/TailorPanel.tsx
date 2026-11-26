@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useFocusTrap } from "@/lib/useFocusTrap";
 import { downloadResumePdf } from "@/lib/resumePdf";
 import { downloadDocx, tailoredResumeParas } from "@/lib/docx";
 import { bumpUsage } from "@/lib/usage";
@@ -11,6 +12,8 @@ import type { Job, Profile, TailoredResume } from "@/lib/types";
 type Props = { profile: Profile; job: Job; onClose: () => void };
 
 export default function TailorPanel({ profile, job, onClose }: Props) {
+  const box = useRef<HTMLDivElement>(null);
+  useFocusTrap(box);
   const [resume, setResume] = useState<TailoredResume | null>(null);
   const [error, setError] = useState("");
 
@@ -47,7 +50,7 @@ export default function TailorPanel({ profile, job, onClose }: Props) {
 
   return (
     <div data-tailor-panel className="animate-fade-in fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/40 p-4 backdrop-blur-sm sm:p-8" onClick={onClose}>
-      <div className="animate-pop-in w-full max-w-5xl overflow-hidden rounded-3xl bg-surface shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div ref={box} role="dialog" aria-modal="true" aria-label={`Tailored resume for ${job.title} at ${job.company}`} className="animate-pop-in w-full max-w-5xl overflow-hidden rounded-3xl bg-surface shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 bg-slate-50 p-5">
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">Tailored resume</p>

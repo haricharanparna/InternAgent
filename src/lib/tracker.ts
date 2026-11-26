@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { safeSet } from "./storage";
 import type { OfferDetails } from "./offers";
+import type { EmailType } from "./types";
 import type { AppStatus, Contact, InterviewPrep, NextStepsPlan, Opportunity, ScoredJob } from "./types";
 
 export const STATUSES = [
@@ -42,7 +44,13 @@ export type TrackedApp = {
   resumeUsed?: { kind: "original" | "tailored"; at?: string };
   // Details the student enters once they hold an offer.
   offer?: OfferDetails;
+  // Interview-day checklist items the student ticked.
+  dayChecks?: string[];
+  // Emails and cover letters written for this application (newest first, last 10).
+  drafts?: SavedDraft[];
 };
+
+export type SavedDraft = { id: string; type: EmailType; subject: string; body: string; at: string; sentAt?: string };
 
 export const toOpportunity = (a: TrackedApp): Opportunity => ({
   title: a.title, company: a.company, location: a.location, url: a.url, description: a.description,
@@ -81,9 +89,7 @@ export function useTracker() {
 
   useEffect(() => {
     if (!loaded) return;
-    try {
-      localStorage.setItem(KEY, JSON.stringify(apps));
-    } catch {}
+    safeSet(KEY, JSON.stringify(apps));
   }, [apps, loaded]);
 
   const add = useCallback((job: ScoredJob, extra?: Partial<TrackedApp>) => {
@@ -127,5 +133,8 @@ export function useTracker() {
 
   const remove = useCallback((id: string) => setApps((prev) => prev.filter((a) => a.id !== id)), []);
 
-  return { apps, add, update, remove };
+  // Put a removed application back (for Undo), at its old place in the list.
+  const restore = useCallback((app: TrackedApp, index: number) => setApps((prev) => (prev.some((a) => a.id === app.id) ? prev : [...prev.slice(0, index), app, ...prev.slice(index)])), []);
+
+  return { apps, add, update, remove, restore };
 }

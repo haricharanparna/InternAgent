@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useFocusTrap } from "@/lib/useFocusTrap";
 import { STATUSES, toOpportunity, type TrackedApp } from "@/lib/tracker";
 import { EMAIL_TYPES, type EmailDraft, type EmailType, type NextStepsPlan, type Profile, type ScoredJob } from "@/lib/types";
 import { bumpUsage } from "@/lib/usage";
@@ -10,8 +11,9 @@ import Contacts from "./Contacts";
 import { printLetter } from "@/lib/resumePdf";
 import { markReady } from "@/lib/readiness";
 import { ReadinessCard } from "./ReadinessCard";
-import { CompanyResearch, ResumeUsed } from "./ApplyKit";
+import { CompanyResearch, InterviewDay, ResumeUsed } from "./ApplyKit";
 import { printPacket } from "@/lib/packet";
+import { useStored } from "@/lib/prefs";
 
 type Props = {
   app: TrackedApp;
@@ -46,6 +48,8 @@ const post = async <T,>(url: string, body: unknown): Promise<T> => {
 };
 
 export default function OpportunityPanel({ app, profile, onUpdate, onClose }: Props) {
+  const box = useRef<HTMLDivElement>(null);
+  useFocusTrap(box);
   const [tab, setTab] = useState<"steps" | "email" | "interview" | "people">(app.status === "interview" ? "interview" : "steps");
   const [emailType, setEmailType] = useState<EmailType>(DEFAULT_EMAIL[app.status]);
   // Who the next email is to (set from the People tab); the key remounts the writer.
@@ -68,7 +72,7 @@ export default function OpportunityPanel({ app, profile, onUpdate, onClose }: Pr
 
   return (
     <div className="animate-fade-in fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/40 p-4 backdrop-blur-sm sm:p-8" onClick={onClose}>
-      <div role="dialog" aria-modal="true" aria-label={`Next steps for ${app.title}`} className="animate-pop-in w-full max-w-3xl overflow-hidden rounded-3xl bg-surface shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div ref={box} role="dialog" aria-modal="true" aria-label={`Next steps for ${app.title}`} className="animate-pop-in w-full max-w-3xl overflow-hidden rounded-3xl bg-surface shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="border-b border-slate-200 bg-slate-50 px-5 pt-5">
           <div className="flex items-start gap-3">
             <CompanyLogo company={app.company} url={app.url} size={44} />
@@ -111,7 +115,10 @@ export default function OpportunityPanel({ app, profile, onUpdate, onClose }: Pr
           ) : tab === "people" ? (
             <Contacts app={app} onUpdate={onUpdate} onEmail={(c) => { setTo({ name: [c.name, c.role].filter(Boolean).join(", "), n: to.n + 1 }); setTab("email"); }} />
           ) : tab === "interview" ? (
-            <InterviewPrep app={app} profile={profile} onUpdate={onUpdate} />
+            <div className="space-y-6">
+              <InterviewDay app={app} onUpdate={onUpdate} />
+              <InterviewPrep app={app} profile={profile} onUpdate={onUpdate} />
+            </div>
           ) : tab === "steps" ? (
             <div className="space-y-8">
               <Steps app={app} profile={profile} onUpdate={onUpdate} onWriteEmail={writeEmail} />
@@ -119,7 +126,7 @@ export default function OpportunityPanel({ app, profile, onUpdate, onClose }: Pr
               <CompanyResearch app={app} />
             </div>
           ) : (
-            <EmailWriter key={to.n} app={app} profile={profile} type={emailType} setType={setEmailType} initialRecipient={to.name} />
+            <EmailWriter key={to.n} app={app} profile={profile} type={emailType} setType={setEmailType} initialRecipient={to.name} onUpdate={onUpdate} />
           )}
         </div>
       </div>
@@ -235,9 +242,20 @@ function Steps({ app, profile, onUpdate, onWriteEmail }: {
 
 // ---------- Email writer ----------
 
-function EmailWriter({ app, profile, type, setType, initialRecipient = "" }: {
-  app: TrackedApp; profile: Profile; type: EmailType; setType: (t: EmailType) => void; initialRecipient?: string;
+function EmailWriter({ app, profile, type, setType, initialRecipient = "", onUpdate }: {
+  app: TrackedApp; profile: Profile; type: EmailType; setType: (t: EmailType) => void; initialRecipient?: string; onUpdate: Props["onUpdate"];
 }) {
+  const [draftId, setDraftId] = useState("");
+  const [notes] = useStored<Record<string, string[]>>("internagent.research", {});
+  const research = (notes[app.company] || []).filter((n) => n?.trim());
+  const [useResearch, setUseResearch] = useState(true);
+  const drafts = app.drafts || [];
+  // Keep every draft with the application, so closing the panel loses nothing.
+  const keep = (d: EmailDraft, id: string, t: EmailType) => {
+    const others = (app.drafts || []).filter((x) => x.id !== id);
+    const old = (app.drafts || []).find((x) => x.id === id);
+    onUpdate(app.id, { drafts: [{ id, type: t, subject: d.subject, body: d.body, at: old?.at || new Date().toISOString(), sentAt: old?.sentAt }, ...others].slice(0, 10) });
+  };
   const [recipient, setRecipient] = useState(initialRecipient);
   const [extra, setExtra] = useState("");
   const [tone, setTone] = useState<"formal" | "conversational" | "enthusiastic">("formal");
@@ -252,10 +270,13 @@ function EmailWriter({ app, profile, type, setType, initialRecipient = "" }: {
     setError("");
     try {
       const { draft } = await post<{ draft: EmailDraft }>("/api/email", {
-        profile, opportunity: toOpportunity(app), type, recipient, extra, tone, length,
+        profile, opportunity: toOpportunity(app), type, recipient, extra, tone, length, research: useResearch ? research : [],
       });
       bumpUsage("emailsWritten");
       if (type === "cover_letter") markReady(app.id, "coverLetterAt");
+      const id = Date.now().toString(36);
+      setDraftId(id);
+      keep(draft, id, type);
       setDraft(draft);
     } catch (e) {
       setError((e as Error).message);
@@ -287,7 +308,7 @@ function EmailWriter({ app, profile, type, setType, initialRecipient = "" }: {
               key={t.id}
               role="radio"
               aria-checked={type === t.id}
-              onClick={() => { setType(t.id); setDraft(null); }}
+              onClick={() => { setType(t.id); setDraft(null); setDraftId(""); }}
               className={`rounded-md border px-3 py-1.5 text-sm transition ${type === t.id ? "border-blue-600 bg-blue-600 text-white" : "border-slate-300 bg-surface text-slate-700 hover:border-slate-400"}`}
             >
               {t.label}
@@ -335,6 +356,15 @@ function EmailWriter({ app, profile, type, setType, initialRecipient = "" }: {
         </label>
       </div>
 
+      {research.length > 0 ? (
+        <label className="flex items-center gap-2 text-sm text-slate-700">
+          <input type="checkbox" checked={useResearch} onChange={(e) => setUseResearch(e.target.checked)} className="h-4 w-4 accent-blue-600" />
+          Use my research notes on {app.company} ({research.length} answer{research.length === 1 ? "" : "s"}) so it can say why this company
+        </label>
+      ) : (
+        <p className="text-xs text-slate-500">Tip: answer a few research questions in Next steps, and the letter can say why {app.company} specifically.</p>
+      )}
+
       <button onClick={generate} disabled={loading} className="btn-primary">
         {loading ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" /> Writing…</> : draft ? "↻ Write it again" : type === "cover_letter" ? "📝 Write my cover letter" : "✉️ Write my email"}
       </button>
@@ -346,7 +376,7 @@ function EmailWriter({ app, profile, type, setType, initialRecipient = "" }: {
             Subject
             <input
               value={draft.subject}
-              onChange={(e) => setDraft({ ...draft, subject: e.target.value })}
+              onChange={(e) => { const d = { ...draft, subject: e.target.value }; setDraft(d); if (draftId) keep(d, draftId, type); }}
               className="mt-1 w-full rounded-md border border-slate-300 bg-surface px-3 py-2 text-sm font-normal normal-case tracking-normal text-slate-900 outline-none focus:border-blue-500"
             />
           </label>
@@ -354,7 +384,7 @@ function EmailWriter({ app, profile, type, setType, initialRecipient = "" }: {
             Message
             <textarea
               value={draft.body}
-              onChange={(e) => setDraft({ ...draft, body: e.target.value })}
+              onChange={(e) => { const d = { ...draft, body: e.target.value }; setDraft(d); if (draftId) keep(d, draftId, type); }}
               rows={12}
               className="mt-1 w-full rounded-md border border-slate-300 bg-surface p-3 text-sm font-normal normal-case leading-relaxed tracking-normal text-slate-900 outline-none focus:border-blue-500"
             />
@@ -377,7 +407,27 @@ function EmailWriter({ app, profile, type, setType, initialRecipient = "" }: {
               {draft.tips.map((t) => <li key={t}>💡 {t}</li>)}
             </ul>
           )}
-          <p className="text-xs text-slate-400">Written only from your resume and notes. Read it over and make it sound like you before sending.</p>
+          <p className="text-xs text-slate-400">Written only from your resume and notes. Read it over and make it sound like you before sending. Your edits are saved with this application.</p>
+        </div>
+      )}
+
+      {drafts.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Your drafts for this application</p>
+          <ul className="mt-2 divide-y divide-slate-200 rounded-md border border-slate-200 text-sm">
+            {drafts.map((d) => (
+              <li key={d.id} className={`flex flex-wrap items-center gap-x-3 gap-y-1 p-2.5 ${d.id === draftId ? "bg-blue-50/50" : ""}`}>
+                <span className="tag tag-soft shrink-0">{EMAIL_TYPES.find((t) => t.id === d.type)?.label}</span>
+                <span className="min-w-0 flex-1 truncate text-slate-800" title={d.subject}>{d.subject || "(no subject)"}</span>
+                <span className="text-xs text-slate-500">{new Date(d.at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}{d.sentAt ? " · sent" : ""}</span>
+                <span className="flex gap-2 text-xs">
+                  <button onClick={() => { setType(d.type); setDraftId(d.id); setDraft({ subject: d.subject, body: d.body, tips: [] }); }} className="text-blue-700 underline underline-offset-2">Open</button>
+                  <button onClick={() => onUpdate(app.id, { drafts: drafts.map((x) => (x.id === d.id ? { ...x, sentAt: x.sentAt ? undefined : new Date().toISOString() } : x)) })} className="text-blue-700 underline underline-offset-2">{d.sentAt ? "Not sent" : "Mark sent"}</button>
+                  <button onClick={() => { onUpdate(app.id, { drafts: drafts.filter((x) => x.id !== d.id) }); if (d.id === draftId) { setDraftId(""); setDraft(null); } }} aria-label={`Delete draft ${d.subject}`} className="text-slate-500 underline underline-offset-2">Delete</button>
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </div>

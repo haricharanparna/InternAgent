@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { useFocusTrap } from "@/lib/useFocusTrap";
 import CompanyLogo from "./CompanyLogo";
 import { postingFacts } from "@/lib/postingFacts";
 import { priorityOf } from "@/lib/priority";
@@ -14,6 +15,8 @@ type Props = { jobs: ScoredJob[]; profile: Profile; onOpen: (j: ScoredJob) => vo
 // Side-by-side comparison of up to 3 internships. Every cell comes from the
 // posting or InternAgent's own scores, and each "best for" says why.
 export default function ComparePanel({ jobs, profile, onOpen, onRemove, onClose }: Props) {
+  const box = useRef<HTMLDivElement>(null);
+  useFocusTrap(box);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
@@ -68,7 +71,7 @@ export default function ComparePanel({ jobs, profile, onOpen, onRemove, onClose 
 
   return (
     <div className="animate-fade-in fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/40 p-3 backdrop-blur-sm sm:p-8" onClick={onClose}>
-      <div role="dialog" aria-modal="true" aria-label="Compare internships" className="animate-pop-in w-full max-w-5xl overflow-hidden rounded-3xl bg-surface shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div ref={box} role="dialog" aria-modal="true" aria-label="Compare internships" className="animate-pop-in w-full max-w-5xl overflow-hidden rounded-3xl bg-surface shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between gap-3 border-b border-slate-200 bg-slate-50 p-5">
           <div>
             <h2 className="text-xl font-medium text-slate-900">Compare internships</h2>

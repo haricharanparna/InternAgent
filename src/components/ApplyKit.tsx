@@ -100,3 +100,48 @@ export function CompanyResearch({ app }: { app: TrackedApp }) {
     </details>
   );
 }
+
+// Interview-day checklist. Items InternAgent can see tick themselves (practice,
+// research, resume version, questions to ask); the rest you tick.
+const MANUAL = [
+  { id: "link", label: "Test the video link, camera and mic (or plan the route and leave early)" },
+  { id: "copy", label: "Have the resume you sent open or printed" },
+  { id: "stories", label: "Pick 3 stories you can tell in 1–2 minutes each" },
+  { id: "thanks", label: "Send a thank-you note within 24 hours after (Emails tab)" },
+];
+
+export function InterviewDay({ app, onUpdate }: { app: TrackedApp; onUpdate: (id: string, p: Partial<TrackedApp>) => void }) {
+  const [notes] = useStored<Record<string, string[]>>("internagent.research", {});
+  if (!app.interviewAt && app.status !== "interview") return null;
+  const research = (notes[app.company] || []).filter((n) => n?.trim()).length;
+  const practiced = Object.keys(app.prep?.feedback || {}).length;
+  const auto = [
+    { label: `Practice at least 3 questions (${practiced} done)`, done: practiced >= 3 },
+    { label: `Research the company (${research} of 5 answered, Next steps tab)`, done: research >= 3 },
+    { label: "Mark which resume you sent (Next steps tab)", done: !!app.resumeUsed },
+    { label: "Have questions ready to ask them", done: !!app.prep?.askThem?.length },
+  ];
+  const ticked = new Set(app.dayChecks || []);
+  const toggle = (id: string) => onUpdate(app.id, { dayChecks: ticked.has(id) ? [...ticked].filter((x) => x !== id) : [...ticked, id] });
+  const done = auto.filter((a) => a.done).length + MANUAL.filter((m) => ticked.has(m.id)).length;
+  const total = auto.length + MANUAL.length;
+  const t = app.interviewAt ? new Date(app.interviewAt) : null;
+  const hours = t ? Math.round((t.getTime() - Date.now()) / 3_600_000) : null;
+  const countdown = hours === null ? "Add the interview time on the card in Applications." : hours < 0 ? "The interview time has passed." : hours < 48 ? `In about ${hours} hour${hours === 1 ? "" : "s"}.` : `In ${Math.round(hours / 24)} days.`;
+  return (
+    <div className="rounded-md border border-blue-200 bg-blue-50/40 p-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <p className="font-semibold text-slate-900">Interview-day checklist</p>
+        <p className="text-sm text-slate-600"><b className="tabular-nums text-slate-900">{done}/{total}</b> ready · {countdown}</p>
+      </div>
+      <ul className="mt-2 grid gap-1.5 text-sm sm:grid-cols-2">
+        {auto.map((a) => (
+          <li key={a.label} className="flex gap-2"><span aria-hidden className={a.done ? "text-emerald-600" : "text-slate-400"}>{a.done ? "✓" : "○"}</span><span className={a.done ? "text-slate-500 line-through" : "text-slate-800"}>{a.label}</span><span className="sr-only">{a.done ? "(done)" : "(not done)"}</span></li>
+        ))}
+        {MANUAL.map((m) => (
+          <li key={m.id}><label className="flex cursor-pointer gap-2"><input type="checkbox" checked={ticked.has(m.id)} onChange={() => toggle(m.id)} className="mt-0.5 h-4 w-4 shrink-0 accent-blue-600" /><span className={ticked.has(m.id) ? "text-slate-500 line-through" : "text-slate-800"}>{m.label}</span></label></li>
+        ))}
+      </ul>
+    </div>
+  );
+}

@@ -207,24 +207,38 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
   const deadlineCount = useMemo(() => jobs.filter((j) => j.deadline).length, [jobs]);
   const ineligible = (id: string) => (priorities.get(id)?.factors.find((f) => f.label === "Eligibility")?.points ?? 20) < 10;
 
-  const visible = useMemo(() => {
-    const q = query.trim().toLowerCase();
+  // One filter for the list and for counting new matches of saved searches.
+  type Filters = Pick<SavedSearch, "query" | "category" | "where" | "paidOnly" | "sponsorOnly" | "length" | "eligibleOnly">;
+  const makeFilter = (o: Filters) => {
+    const q = o.query.trim().toLowerCase();
     const parsed = parseSearch(q);
-    const list = jobs.filter((j) => {
+    return (j: ScoredJob) => {
       if (q && !matchesSearch(j, parsed)) return false;
-      if (category && facts.get(j.id)?.category !== category) return false;
-      if (paidOnly && !facts.get(j.id)?.pay) return false;
+      if (o.category && facts.get(j.id)?.category !== o.category) return false;
+      if (o.paidOnly && !facts.get(j.id)?.pay) return false;
+      const weeks = weeksOf.get(j.id) || 0;
+      if (o.length === "short" && !(weeks > 0 && weeks <= 13)) return false;
+      if (o.length === "long" && !(weeks > 13)) return false;
+      if (o.eligibleOnly && ineligible(j.id)) return false;
+      if (o.sponsorOnly && !/offers sponsorship/i.test(facts.get(j.id)?.sponsorship || "")) return false;
+      if (o.where === "remote") return isRemote(j.location);
+      if (o.where === "near" && place) return isNear(j.location, place) || isRemote(j.location);
+      return true;
+    };
+  };
+  const newBySearch = useMemo(() => {
+    const fresh = jobs.filter((j) => newIds.has(j.id) && !hidden.includes(j.id));
+    return new Map(searches.map((s) => [s.id, fresh.length ? fresh.filter(makeFilter(s)).length : 0]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searches, jobs, newIds, hidden, facts, weeksOf, priorities, place]);
+
+  const visible = useMemo(() => {
+    const keep = makeFilter({ query, category, where, paidOnly, sponsorOnly, length, eligibleOnly });
+    const list = jobs.filter((j) => {
       if (hideSaved && trackedIds.has(j.id)) return false;
       if (!showHidden && hidden.includes(j.id)) return false;
-      const weeks = weeksOf.get(j.id) || 0;
-      if (length === "short" && !(weeks > 0 && weeks <= 13)) return false;
-      if (length === "long" && !(weeks > 13)) return false;
-      if (eligibleOnly && ineligible(j.id)) return false;
-      if (sponsorOnly && !/offers sponsorship/i.test(facts.get(j.id)?.sponsorship || "")) return false;
       if (newOnly && !newIds.has(j.id)) return false;
-      if (where === "remote") return isRemote(j.location);
-      if (where === "near" && place) return isNear(j.location, place) || isRemote(j.location);
-      return true;
+      return keep(j);
     });
     if (sort === "priority") return [...list].sort((a, b) => (priorities.get(b.id)?.score ?? 0) - (priorities.get(a.id)?.score ?? 0));
     if (sort === "deadline") return [...list].sort((a, b) => (a.deadline || "9999").localeCompare(b.deadline || "9999"));
@@ -391,6 +405,7 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
 
       <SavedSearches
         searches={searches}
+        newCounts={newBySearch}
         onSave={() => {
           const parts = [query && `"${query}"`, category, where !== "all" && (where === "remote" ? "Remote" : "Near me"), paidOnly && "Pay listed", sponsorOnly && "Visa", length && (length === "short" ? "≤13 weeks" : "4+ months"), eligibleOnly && "Eligible"].filter(Boolean);
           const s: SavedSearch = { id: String(Date.now()), name: parts.join(" · ") || "All internships", query, category, where, paidOnly, sponsorOnly, length, eligibleOnly, sort };
@@ -470,6 +485,12 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
                     {f.category && <span className="tag tag-soft">{f.category}</span>}
                     {f.workplace && <span className="tag tag-soft">{f.workplace}</span>}
                     {newIds.has(j.id) && <span className="tag bg-emerald-100 text-emerald-800">New</span>}
+                    {watch.includes(j.company) && <span className="tag bg-amber-100 text-amber-800" title="You're watching this company">★ Watching</span>}
+                    {(() => {
+                      if (!j.deadline) return null;
+                      const days = Math.ceil((new Date(j.deadline.slice(0, 10) + "T23:59").getTime() - Date.now()) / 86_400_000);
+                      return days >= 0 && days <= 14 ? <span className={`tag ${days <= 3 ? "bg-rose-100 text-rose-800" : "bg-amber-50 text-amber-800"}`}>⏰ {days === 0 ? "Closes today" : `Closes in ${days} day${days === 1 ? "" : "s"}`}</span> : null;
+                    })()}
                     {j.postedAt && <span className="text-xs text-slate-500" title={`Posted or updated ${new Date(j.postedAt).toLocaleDateString()}`}>· {ago(j.postedAt)}</span>}
                   </div>
                   <h3 className="mt-2 text-xl font-medium leading-snug text-slate-900">
@@ -642,15 +663,15 @@ function ApplyFirst({ jobs, priorities, onOpen, onSortPriority, sortedByPriority
 }
 
 // Saved searches: one click re-applies a set of filters.
-function SavedSearches({ searches, onSave, onApply, onDelete }: {
-  searches: SavedSearch[]; onSave: () => void; onApply: (s: SavedSearch) => void; onDelete: (id: string) => void;
+function SavedSearches({ searches, newCounts, onSave, onApply, onDelete }: {
+  searches: SavedSearch[]; newCounts: Map<string, number>; onSave: () => void; onApply: (s: SavedSearch) => void; onDelete: (id: string) => void;
 }) {
   return (
     <div className="flex flex-wrap items-center gap-1.5 text-sm">
       <button onClick={onSave} className="rounded-md border border-dashed border-slate-300 px-2 py-1 text-slate-600 hover:border-slate-500">☆ Save this search</button>
       {searches.map((s) => (
         <span key={s.id} className="inline-flex items-center rounded-md border border-slate-200 bg-surface">
-          <button onClick={() => onApply(s)} className="max-w-[14rem] truncate px-2 py-1 text-slate-700 hover:text-blue-700">★ {s.name}</button>
+          <button onClick={() => onApply(s)} className="max-w-[14rem] truncate px-2 py-1 text-slate-700 hover:text-blue-700">★ {s.name}{(newCounts.get(s.id) || 0) > 0 && <b className="ml-1 text-emerald-700">· {newCounts.get(s.id)} new</b>}</button>
           <button onClick={() => onDelete(s.id)} aria-label={`Delete saved search ${s.name}`} className="px-1.5 py-1 text-slate-400 hover:text-slate-700">×</button>
         </span>
       ))}

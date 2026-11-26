@@ -35,3 +35,22 @@ test("beginner-friendly leaves out PhD and MBA-only roles", () => {
   assert.equal(matchesSearch(job({ title: "Software Engineer Intern" }), p), true);
   assert.equal(matchesSearch(job({ title: "PhD Software Engineer Intern" }), p), false);
 });
+
+test("leaves out excluded words: -word, not, except, without", () => {
+  const p = parseSearch("software internships not finance -sales except google");
+  assert.deepEqual(p.exclude, ["finance", "sales", "google"]);
+  assert.equal(p.field, "Software");
+  const job = (title: string, company = "Acme") => ({ id: "1", title, company, location: "NYC", url: "", source: "greenhouse" as const, description: "" });
+  assert.ok(matchesSearch(job("Software Engineer Intern"), p));
+  assert.ok(!matchesSearch(job("Software Engineer Intern, Sales Tools"), p));
+  assert.ok(!matchesSearch(job("Software Engineer Intern", "Google"), p));
+  assert.deepEqual(parseSearch("no experience needed").exclude, []);
+});
+
+test("role nouns stay as words, so 'data analyst' finds analyst roles only", () => {
+  const p = parseSearch("data analyst internships");
+  assert.equal(p.field, "Data");
+  assert.deepEqual(p.words, ["analyst"]);
+  assert.equal(matchesSearch(job({ title: "Data Analyst Intern" }), p), true);
+  assert.equal(matchesSearch(job({ title: "Data Engineering Intern" }), p), false);
+});

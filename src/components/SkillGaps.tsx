@@ -10,7 +10,7 @@ const KEY = "internagent.learning";
 
 // Skill gaps → learning roadmap → what-if. Everything is counted from today's
 // real postings with the same free keyword match the job cards use.
-export default function SkillGaps({ profile, onSearch }: { profile: Profile | null; onSearch: () => void }) {
+export default function SkillGaps({ profile, onSearch, onAddSkill }: { profile: Profile | null; onSearch: () => void; onAddSkill?: (skill: string) => void }) {
   const [jobs, setJobs] = useState<Job[] | null>(null);
   const [error, setError] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
@@ -135,7 +135,7 @@ export default function SkillGaps({ profile, onSearch }: { profile: Profile | nu
             )}
           </div>
 
-          {learned.length > 0 && <LearningLog skills={learned} />}
+          {learned.length > 0 && <LearningLog skills={learned} have={profile.skills} onAddSkill={onAddSkill} />}
 
           {plan.length > 0 && (
             <div>
@@ -175,7 +175,7 @@ type LogEntry = { skill: string; h: number; at: string };
 const GOAL = 20; // hours: the 4-week plan at about 5 hours a week
 
 // Hours spent on each skill you're learning, logged by you and kept in this browser.
-function LearningLog({ skills }: { skills: string[] }) {
+function LearningLog({ skills, have, onAddSkill }: { skills: string[]; have: string[]; onAddSkill?: (skill: string) => void }) {
   const [log, setLog] = useStored<LogEntry[]>(KEYS.hours, []);
   const week = Date.now() - 7 * 86_400_000;
   const total = (s: string) => log.filter((e) => e.skill === s).reduce((n, e) => n + e.h, 0);
@@ -205,6 +205,15 @@ function LearningLog({ skills }: { skills: string[] }) {
                 <div className={`h-full rounded-full ${h >= GOAL ? "bg-emerald-500" : "bg-blue-500"}`} style={{ width: `${Math.min(100, (h / GOAL) * 100)}%` }} />
               </div>
               {h >= GOAL && <p className="mt-1.5 text-xs text-emerald-700">Goal reached. Finish your project, then add {s} to your resume if you can really use it.</p>}
+              {have.some((x) => x.toLowerCase() === s.toLowerCase())
+                ? <p className="mt-1.5 text-xs text-emerald-700">✓ {s} is on your profile.</p>
+                : onAddSkill && h > 0 && (
+                  <p className="mt-1.5 text-xs text-slate-600">
+                    Can you use {s} on your own now?{" "}
+                    <button onClick={() => onAddSkill(s)} className="font-medium text-blue-700 underline underline-offset-2">Add it to my skills</button>
+                    {" "}(your matches and Skill gaps update; only add it if it&apos;s true).
+                  </p>
+                )}
             </li>
           );
         })}

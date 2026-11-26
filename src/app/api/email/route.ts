@@ -61,7 +61,8 @@ export async function POST(req: Request) {
   const limited = rateLimited(req);
   if (limited) return limited;
   try {
-    const { profile, opportunity: o, type, recipient, extra, tone, length } = (await req.json()) as {
+    const { profile, opportunity: o, type, recipient, extra, tone, length, research } = (await req.json()) as {
+      research?: string[];
       tone?: "formal" | "conversational" | "enthusiastic";
       length?: "standard" | "short";
       profile: Profile;
@@ -88,6 +89,7 @@ TO: ${to || "unknown, so greet with the placeholder [Name]"}
 ROLE: ${o.title} at ${o.company} (${o.location}), posting: ${o.url}
 POSTING DETAILS: ${(o.description || "(only the title is known)").slice(0, 1200)}
 REQUIREMENTS THE STUDENT DOESN'T SHOW: ${JSON.stringify([...new Set(missing)].slice(0, 12))}
+STUDENT'S OWN RESEARCH ON THE COMPANY: ${Array.isArray(research) && research.some((r) => typeof r === "string" && r.trim()) ? research.filter((r) => typeof r === "string" && r.trim()).map((r) => r.trim().slice(0, 300)).join(" | ").slice(0, 900) : "(none)"}
 STUDENT NOTES: ${[o.notes?.trim(), extra?.trim()].filter(Boolean).join(" | ").slice(0, 600) || "(none)"}
 STUDENT: ${JSON.stringify({ name: profile.name, email: profile.email, major: profile.major, school: profile.school, graduationYear: profile.graduationYear, skills: profile.skills, experiences: profile.experiences.map((e) => ({ title: e.title, organization: e.organization, bullets: e.bullets })) })}
 
@@ -97,7 +99,7 @@ Return:
 - tips: 2-3 short, specific tips for sending THIS email (for a cover letter: how to submit it, what to customize) (who to send it to, timing, what to attach or check).
 
 Honesty rules (most important):
-- Use only facts from STUDENT and STUDENT NOTES. Never invent experiences, numbers, mutual contacts, conversations, interview details or anything about the company that isn't in POSTING DETAILS.
+- Use only facts from STUDENT, STUDENT NOTES and STUDENT'S OWN RESEARCH. If the research is given, use one specific point from it to show why this company (in the student's words, not exaggerated). Never invent experiences, numbers, mutual contacts, conversations, interview details or anything about the company that isn't in POSTING DETAILS.
 - Skills from the skills list: only say a skill was used in an experience if that experience's bullets mention it. Don't invent where a skill came from (no "through my coursework in", "in my classes", "self-taught") unless STUDENT says so; just say you have or work with the skill.
 - Don't mention requirements the student doesn't show (REQUIREMENTS THE STUDENT DOESN'T SHOW, or anything absent from STUDENT), and never copy requirement lines from the posting into the letter. Only bring one up if STUDENT NOTES say they're learning it, and then say exactly that.
 - Never link a skill to a project unless that project's bullets mention it, and describe projects in their own words (don't upgrade "an app" to "full-stack features").

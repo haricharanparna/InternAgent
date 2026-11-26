@@ -20,6 +20,7 @@ export function eventsFor(a: TrackedApp): CalEvent[] {
     const d = new Date(new Date(a.appliedAt).getTime() + FOLLOW_UP_DAYS * 86_400_000);
     out.push({ uid: `${a.id}-followup`, title: `Follow up: ${role}`, start: d, allDay: true, description: `${FOLLOW_UP_DAYS} days since you applied. InternAgent can draft the follow-up email.`, url: a.url });
   }
+  if (a.status === "offer" && a.offer?.decideBy) out.push({ uid: `${a.id}-decide`, title: `Decide on offer: ${role}`, start: new Date(a.offer.decideBy + "T09:00"), allDay: true, description: "Offer decision date you set in InternAgent. Compare your offers in Applications.", url: a.url });
   return out;
 }
 

@@ -6,6 +6,7 @@ import { hourlyPay, jobFacts } from "./jobFacts.ts";
 
 export type ParsedSearch = {
   words: string[]; // leftover words matched against title, company, location
+  exclude: string[]; // "-sales", "not finance", "except google": roles with these words are left out
   field?: string;
   remote?: boolean;
   workplace?: "Hybrid" | "On-site";
@@ -32,11 +33,13 @@ export const FIELDS: [string, RegExp, RegExp][] = [
   ["Business", /\b(business|operations|strategy|consulting|sales)\b/i, /\b(business|operations|strategy|consult\w*|sales|bizops)\b/i],
 ];
 
+const ROLE_NOUN = /^(analyst|scientist|designer|researcher|developer)$/i;
+
 const STOP = new Set("find show me get give i want looking look for some any all internship internships intern interns role roles job jobs position positions opportunity opportunities in at with a an the that which who are is to of and or on near paying pays pay paid per hour hourly hr an least minimum min over above more than plus program programs please can".split(" "));
 
 export function parseSearch(input: string): ParsedSearch {
   let q = ` ${input.toLowerCase()} `;
-  const out: ParsedSearch = { words: [], chips: [] };
+  const out: ParsedSearch = { words: [], exclude: [], chips: [] };
   const take = (re: RegExp) => { const m = q.match(re); if (m) q = q.replace(re, " "); return m; };
 
   const pay = take(/(?:at least|min(?:imum)?|over|above|more than|>=?|paying|pays|paid)?\s*\$\s?(\d{2,3})(?:\.\d+)?\s*(?:\+|\s*(?:\/|per|an?)\s*(?:hr|hour)\b|\s*(?:or more|and up|plus))*/);
@@ -47,11 +50,15 @@ export function parseSearch(input: string): ParsedSearch {
   else if (take(/\b(on-?site|in[- ]person|in office)\b/)) { out.workplace = "On-site"; out.chips.push("On-site"); }
   if (take(/\b(visa|sponsor\w*|h-?1b|opt|cpt)\b/)) { out.visa = true; out.chips.push("Sponsors visas"); }
   if (take(/\b(beginners?|beginner[- ]friendly|no experience|entry[- ]level|freshm[ae]n|sophomores?|first[- ]year)\b/)) { out.beginner = true; out.chips.push("Beginner-friendly (no PhD/MBA/Master's-only roles)"); }
+  // Exclusions, read before the field so "not finance" doesn't search for finance.
+  q = q.replace(/(^|\s)(?:-|not\s+|no\s+|except\s+|excluding\s+|without\s+)([a-z0-9+#.&]{2,})(?=\s)/g, (_m, pre: string, w: string) => { if (!STOP.has(w)) out.exclude.push(w); return pre + " "; });
+  if (out.exclude.length) out.chips.push(`Leaving out “${out.exclude.join("”, “")}”`);
   const season = take(/\b(summer|fall|winter|spring)(?:\s+(20\d\d))?\b/);
   if (season) { out.season = season[1]; out.year = season[2]; out.chips.push(`${season[1][0].toUpperCase()}${season[1].slice(1)}${season[2] ? ` ${season[2]}` : ""}`); }
   else { const y = take(/\b(20\d\d)\b/); if (y) { out.year = y[1]; out.chips.push(y[1]); } }
   for (const [name, ask] of FIELDS) {
-    if (ask.test(q)) { out.field = name; q = q.replace(new RegExp(ask.source, "gi"), " "); out.chips.push(name); break; }
+    // Role nouns ("analyst", "designer"…) also stay as words, so "data analyst" finds analyst roles, not every data role.
+    if (ask.test(q)) { out.field = name; q = q.replace(new RegExp(ask.source, "gi"), (m) => (ROLE_NOUN.test(m) ? ` ${m} ` : " ")); out.chips.push(name); break; }
   }
   out.words = q.split(/[^a-z0-9+#.&-]+/).filter((w) => w.length > 1 && !STOP.has(w));
   if (out.words.length) out.chips.push(`Matching “${out.words.join(" ")}”`);
@@ -63,6 +70,7 @@ export function matchesSearch(job: Job, p: ParsedSearch): boolean {
   const f = jobFacts(job);
   const titleEtc = `${job.title} ${job.company} ${job.location} ${f.category || ""} ${job.team || ""}`.toLowerCase();
   if (p.words.length && !p.words.every((w) => titleEtc.includes(w))) return false;
+  if (p.exclude.some((w) => new RegExp(`(^|[^a-z0-9])${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`, "i").test(titleEtc))) return false;
   if (p.field) {
     const re = FIELDS.find(([n]) => n === p.field)![2];
     if (!re.test(`${job.title} ${f.category || ""} ${job.team || ""}`)) return false;

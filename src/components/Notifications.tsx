@@ -32,6 +32,14 @@ export function notificationsFor(apps: TrackedApp[], newCount: { count: number; 
       if (t > now && t - now <= 7 * DAY) out.push({ key: `dl:${a.id}:${a.deadline}`, icon: "⏰", text: `Apply to ${who} before the deadline.`, when: fmtDay(new Date(t)), urgent: t - now <= 2 * DAY, open: a.id });
       else if (t <= now && now - t <= 14 * DAY) out.push({ key: `dlpast:${a.id}:${a.deadline}`, icon: "⌛", text: `The deadline you noted for ${who} has passed. Apply anyway if it's still open, or archive it.`, when: fmtDay(new Date(t)), open: a.id });
     }
+    // People you've reached out to: check in again after 3 weeks while the application is open.
+    if (["saved", "applied", "assessment", "interview"].includes(a.status)) {
+      for (const c of a.contacts || []) {
+        if (!c.lastContacted) continue;
+        const days = Math.floor((now - new Date(c.lastContacted).getTime()) / DAY);
+        if (days >= 21 && days <= 60) out.push({ key: `contact:${a.id}:${c.id}:${c.lastContacted}`, icon: "👋", text: `Check in with ${c.name} (${a.company}): ${days} days since you last talked.`, when: "When it suits you", open: a.id });
+      }
+    }
     if (a.status === "offer" && a.offer?.decideBy) {
       const t = new Date(a.offer.decideBy + "T23:59").getTime();
       if (t > now && t - now <= 7 * DAY) out.push({ key: `decide:${a.id}:${a.offer.decideBy}`, icon: "🤝", text: `Decide on your ${a.company} offer. Compare offers in Applications.`, when: fmtDay(new Date(t)), urgent: t - now <= 2 * DAY, open: a.id });

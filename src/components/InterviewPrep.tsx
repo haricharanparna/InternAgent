@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { toOpportunity, type TrackedApp } from "@/lib/tracker";
 import type { AnswerFeedback, InterviewQuestion, Profile } from "@/lib/types";
 import { bumpUsage } from "@/lib/usage";
+import { useStored } from "@/lib/prefs";
 
 // Practice interview: likely questions for this posting, a place to answer
 // (typed or spoken), and honest STAR feedback on each answer.
@@ -30,6 +31,8 @@ export default function InterviewPrep({ app, profile, onUpdate }: Props) {
   const [error, setError] = useState("");
   const [open, setOpen] = useState<number | null>(0);
   const [onlyHard, setOnlyHard] = useState(false);
+  const [notes] = useStored<Record<string, string[]>>("internagent.research", {});
+  const research = (notes[app.company] || []).filter((n) => n?.trim());
 
   async function load() {
     setBusy(true);
@@ -97,6 +100,7 @@ export default function InterviewPrep({ app, profile, onUpdate }: Props) {
             {open === i && (
               <Practice
                 q={q}
+                research={q.kind === "role" ? research : undefined}
                 answer={prep.answers[i] || ""}
                 feedback={prep.feedback[i]}
                 onAnswer={(text) => onUpdate(app.id, { prep: { ...prep, answers: { ...prep.answers, [i]: text } } })}
@@ -124,8 +128,9 @@ export default function InterviewPrep({ app, profile, onUpdate }: Props) {
 // Minimal typing for the browser's built-in speech recognition (Chrome, Edge, Safari).
 type Recognition = { continuous: boolean; interimResults: boolean; lang: string; start(): void; stop(): void; onresult: ((e: { resultIndex: number; results: ArrayLike<{ isFinal: boolean; 0: { transcript: string } }> }) => void) | null; onend: (() => void) | null };
 
-function Practice({ q, answer, feedback, onAnswer, onFeedback, getFeedback }: {
+function Practice({ q, answer, feedback, onAnswer, onFeedback, getFeedback, research }: {
   q: InterviewQuestion;
+  research?: string[];
   answer: string;
   feedback?: AnswerFeedback;
   onAnswer: (t: string) => void;
@@ -195,6 +200,12 @@ function Practice({ q, answer, feedback, onAnswer, onFeedback, getFeedback }: {
         <p className="rounded-md bg-slate-50 px-3 py-2 text-slate-600"><b className="text-slate-800">Why they ask:</b> {q.why}</p>
         <p className="rounded-md bg-blue-50 px-3 py-2 text-slate-700"><b className="text-slate-900">Draw on:</b> {q.useThis}</p>
       </div>
+      {research && (research.length ? (
+        <div className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-slate-700">
+          <b className="text-slate-900">Your research, for &quot;why us&quot;:</b>
+          <ul className="mt-1 list-disc pl-5">{research.map((r) => <li key={r}>{r}</li>)}</ul>
+        </div>
+      ) : <p className="text-xs text-slate-500">Answer the research questions in Next steps to have specifics for this one.</p>)}
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}

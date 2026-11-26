@@ -124,6 +124,7 @@ export default function SettingsPanel() {
           <div className="mt-3 border-t border-slate-200 pt-3">
             <p className="text-xs font-semibold text-slate-700">Your data</p>
             <p className="mt-0.5 text-xs text-slate-500">Everything lives in this browser. Save a backup to move it to another device.</p>
+            <StorageMeter />
             <div className="mt-2 grid grid-cols-2 gap-2">
               <button onClick={exportData} className="rounded-md border border-slate-300 px-2 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">⬇ Save backup</button>
               <label className="cursor-pointer rounded-md border border-slate-300 px-2 py-1.5 text-center text-xs font-medium text-slate-700 hover:bg-slate-50">
@@ -171,4 +172,33 @@ function clearData() {
   if (!confirm("Delete your profile, applications, resume drafts and settings from this browser? This can't be undone unless you saved a backup.")) return;
   Object.keys(localStorage).filter((k) => k.startsWith(PREFIX)).forEach((k) => localStorage.removeItem(k));
   location.reload();
+}
+
+// How much of the browser's storage InternAgent uses. Browsers allow about 5 MB
+// per site; past that, new saves fail, so warn early.
+const LIMIT_CHARS = 5_000_000;
+function StorageMeter() {
+  const [used, setUsed] = useState<number | null>(null);
+  useEffect(() => {
+    try {
+      let n = 0;
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i)!;
+        if (k.startsWith(PREFIX)) n += k.length + (localStorage.getItem(k) || "").length;
+      }
+      setUsed(n);
+    } catch { setUsed(null); }
+  }, []);
+  if (used === null) return null;
+  const pct = Math.min(100, Math.round((used / LIMIT_CHARS) * 100));
+  const kb = used < 1_000_000 ? `${Math.max(1, Math.round(used / 1000))} KB` : `${(used / 1_000_000).toFixed(1)} MB`;
+  return (
+    <div className="mt-2">
+      <div className="flex justify-between text-[11px] text-slate-500"><span>Storage used</span><span>{kb} of about 5 MB ({pct}%)</span></div>
+      <div className="mt-0.5 h-1.5 overflow-hidden rounded-full bg-slate-200" role="progressbar" aria-label="Browser storage used" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+        <div className={`h-full rounded-full ${pct >= 80 ? "bg-rose-500" : "bg-blue-500"}`} style={{ width: `${Math.max(pct, 1)}%` }} />
+      </div>
+      {pct >= 80 && <p className="mt-1 text-[11px] text-rose-700">Almost full. Save a backup, then remove old applications so new changes can still be saved.</p>}
+    </div>
+  );
 }

@@ -13,6 +13,7 @@ import HowItWorks from "@/components/HowItWorks";
 import OpportunityPanel from "@/components/OpportunityPanel";
 import SkillGaps from "@/components/SkillGaps";
 import Onboarding from "@/components/Onboarding";
+import StorageWarning from "@/components/StorageWarning";
 import Notifications from "@/components/Notifications";
 import ResumeBuilder from "@/components/ResumeBuilder";
 import { followUpDue, useTracker } from "@/lib/tracker";
@@ -65,7 +66,7 @@ export default function Home() {
   }
 
   const tabClass = (t: Tab) =>
-    `relative -mb-px shrink-0 border-b-2 px-1 py-2 text-sm transition sm:text-[15px] ${
+    `relative -mb-px shrink-0 border-b-2 px-0.5 py-2 text-[13.5px] transition sm:px-1 sm:text-[15px] ${
       tab === t ? "border-blue-600 text-slate-900" : "border-transparent text-slate-600 hover:text-slate-900"
     }`;
 
@@ -77,17 +78,17 @@ export default function Home() {
           <button onClick={() => setTab("search")} aria-label="InternAgent home" className="group">
             <Logo />
           </button>
-          <nav className="order-3 -mx-4 flex basis-full gap-4 overflow-x-auto whitespace-nowrap px-4 [scrollbar-width:none] sm:gap-5 sm:order-2 sm:mx-0 sm:ml-auto sm:basis-auto sm:px-0">
+          <nav className="order-3 -mx-4 flex basis-full gap-2.5 overflow-x-auto whitespace-nowrap px-4 [scrollbar-width:none] sm:gap-5 sm:order-2 sm:mx-0 sm:ml-auto sm:basis-auto sm:px-0">
             <button className={tabClass("search")} onClick={() => setTab("search")}>Search</button>
-            <button className={tabClass("build")} onClick={() => setTab("build")}>Build a resume</button>
-            <button className={tabClass("skills")} onClick={() => setTab("skills")}>Skill gaps</button>
+            <button className={tabClass("build")} onClick={() => setTab("build")}><span className="sm:hidden">Build</span><span className="hidden sm:inline">Build a resume</span></button>
+            <button className={tabClass("skills")} onClick={() => setTab("skills")}><span className="sm:hidden">Skills</span><span className="hidden sm:inline">Skill gaps</span></button>
             <button className={tabClass("tracker")} onClick={() => setTab("tracker")}>
-              Applications
-              <span className="ml-1.5 rounded-[3px] border border-slate-300 px-1.5 text-[11px] text-slate-600">{tracker.apps.length}</span>
+              <span className="sm:hidden">Apps</span><span className="hidden sm:inline">Applications</span>
+              <span className="ml-1 rounded-[3px] border border-slate-300 px-1 text-[11px] sm:ml-1.5 sm:px-1.5 text-slate-600">{tracker.apps.length}</span>
               {dueCount > 0 && <span className="absolute -right-2 top-1 h-2 w-2 rounded-full bg-amber-500 ring-2 ring-surface" title="Follow-ups due" />}
             </button>
             <button className={tabClass("impact")} onClick={() => setTab("impact")}>Impact</button>
-            <button className={tabClass("how")} onClick={() => setTab("how")}>How it works</button>
+            <button className={tabClass("how")} onClick={() => setTab("how")}><span className="sm:hidden">How</span><span className="hidden sm:inline">How it works</span></button>
           </nav>
           <div className="order-2 ml-auto flex items-center gap-1.5 sm:order-3 sm:ml-0">
             <Notifications apps={tracker.apps} onOpen={setOpenId} onSearch={() => setTab("search")} />
@@ -156,12 +157,12 @@ export default function Home() {
         </div>
 
         {tab === "build" && <ResumeBuilder profile={profile} onUseProfile={(p) => { updateProfile(p); setTab("search"); window.scrollTo({ top: 0 }); }} />}
-        {tab === "skills" && <SkillGaps profile={profile} onSearch={() => setTab("search")} />}
+        {tab === "skills" && <SkillGaps profile={profile} onSearch={() => setTab("search")} onAddSkill={(s) => profile && !profile.skills.some((x) => x.toLowerCase() === s.toLowerCase()) && updateProfile({ ...profile, skills: [...profile.skills, s] })} />}
         {tab === "impact" && <Impact apps={tracker.apps} onSearch={() => setTab("search")} />}
         {tab === "how" && <HowItWorks profile={profile} />}
 
         {tab === "tracker" && (
-          <Tracker apps={tracker.apps} onUpdate={tracker.update} onRemove={tracker.remove} onBrowse={() => setTab("search")} onOpen={setOpenId} onAdd={(j) => { tracker.add(j); setOpenId(j.id); }} />
+          <Tracker apps={tracker.apps} onUpdate={tracker.update} onRemove={tracker.remove} onRestore={tracker.restore} onBrowse={() => setTab("search")} onOpen={setOpenId} onAdd={(j) => { tracker.add(j); setOpenId(j.id); }} />
         )}
 
         <footer className="border-t border-slate-200 pt-6 text-sm text-slate-500">
@@ -169,6 +170,7 @@ export default function Home() {
         </footer>
       </main>
       {openApp && <OpportunityPanel app={openApp} profile={profile} onUpdate={tracker.update} onClose={() => setOpenId(null)} />}
+      <StorageWarning />
       <ChatWidget />
     </>
   );

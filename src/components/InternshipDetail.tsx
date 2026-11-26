@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useFocusTrap } from "@/lib/useFocusTrap";
 import CompanyLogo from "./CompanyLogo";
 import RoleDetails from "./RoleDetails";
 import { postingFacts, postingSections, type PostingFact, type PostingSection } from "@/lib/postingFacts";
@@ -8,6 +9,7 @@ import { keywordMatch } from "@/lib/keywords";
 import { skillsMentioned } from "@/lib/jobFacts";
 import { bumpUsage } from "@/lib/usage";
 import { trustOf } from "@/lib/authenticity";
+import { similarJobs } from "@/lib/similar";
 import { PriorityBreakdown, ReadinessCard } from "./ReadinessCard";
 import { KEYS, useStored, type Report } from "@/lib/prefs";
 import { EMAIL_TYPES, type NextStepsPlan, type Profile, type ScoredJob } from "@/lib/types";
@@ -66,6 +68,7 @@ export default function InternshipDetail({ job: listed, profile, allJobs, tracke
   const [watch, setWatch] = useStored<string[]>(KEYS.watch, []);
   const watching = watch.includes(listed.company);
   const dialog = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialog);
 
   // Fetch the full, current posting from the company's own job board.
   useEffect(() => {
@@ -102,6 +105,7 @@ export default function InternshipDetail({ job: listed, profile, allJobs, tracke
     () => allJobs.filter((j) => j.company === job.company && j.id !== job.id).slice(0, 6),
     [allJobs, job.company, job.id],
   );
+  const similar = useMemo(() => similarJobs(job, allJobs), [job, allJobs]);
   const deadline = job.deadline?.slice(0, 10);
 
   const main = sections.filter((s) => s.kind === "role" || s.kind === "requirements" || s.kind === "preferred");
@@ -266,6 +270,23 @@ export default function InternshipDetail({ job: listed, profile, allJobs, tracke
                   </li>
                 ))}
               </ul>
+            </section>
+          )}
+
+          {similar.length > 0 && (
+            <section aria-labelledby="similar-h">
+              <h3 id="similar-h" className="text-xs font-semibold uppercase tracking-wider text-slate-500">Similar internships at other companies</h3>
+              <ul className="mt-2 divide-y divide-slate-200 rounded-md border border-slate-200">
+                {similar.map((j) => (
+                  <li key={j.id}>
+                    <button onClick={() => onOpenJob(j)} className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-sm hover:bg-slate-50">
+                      <span className="min-w-0"><span className="block truncate font-medium text-slate-800">{j.title}</span><span className="block truncate text-xs text-slate-500">{j.company} · {j.location}</span></span>
+                      <span aria-hidden className="text-slate-400">→</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-1 text-[11px] text-slate-500">Matched by the words in the role&apos;s title, one per company.</p>
             </section>
           )}
         </div>

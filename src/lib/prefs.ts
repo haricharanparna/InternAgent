@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { safeSet } from "./storage";
 
 // Small lists kept in the student's browser (like everything else in
 // InternAgent): recently viewed internships, hidden ones, saved searches,
@@ -25,7 +26,7 @@ export function useStored<T>(key: string, fallback: T): [T, (next: T | ((prev: T
   }, [key]);
   const set = useCallback((next: T | ((prev: T) => T)) => {
     const value = typeof next === "function" ? (next as (p: T) => T)(read(key, fallback)) : next;
-    try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+    safeSet(key, JSON.stringify(value));
     setValue(value);
     window.dispatchEvent(new CustomEvent(EVENT, { detail: key }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
