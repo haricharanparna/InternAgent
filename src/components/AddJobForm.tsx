@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { ScoredJob } from "@/lib/types";
+import { trustOf } from "@/lib/authenticity";
 
 // Save an internship found anywhere (LinkedIn, Handshake, a career fair, a
 // company site) so it gets the same plan, emails and interview prep.
@@ -46,6 +47,19 @@ export default function AddJobForm({ onAdd, onCancel }: { onAdd: (job: ScoredJob
         <textarea className="field min-h-28" value={f.description} onChange={set("description")} placeholder="Responsibilities, requirements, about the team…" />
       </label>
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+      {(() => {
+        // Scam check on what they pasted, before they save it. Plain text rules, no AI.
+        const t = f.company && (f.url || f.description.length > 40)
+          ? trustOf({ id: "draft", title: f.title, company: f.company, location: f.location, url: f.url.trim(), source: "greenhouse", custom: true, description: f.description })
+          : null;
+        return t && t.flags.length ? (
+          <div role="alert" className="rounded-md border border-rose-300 bg-rose-50 p-3 text-sm text-rose-900">
+            <p className="font-semibold">This listing has signs of a common internship scam</p>
+            <ul className="mt-1 list-disc pl-5">{t.flags.map((x) => <li key={x.label}>{x.label}</li>)}</ul>
+            <p className="mt-1 text-xs">You can still save it, but check the role on {f.company}&apos;s own careers page first.</p>
+          </div>
+        ) : null;
+      })()}
       <div className="flex gap-2">
         <button type="submit" className="btn-primary">Save & get next steps</button>
         <button type="button" onClick={onCancel} className="btn-secondary">Cancel</button>

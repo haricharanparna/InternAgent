@@ -7,6 +7,8 @@ import { postingFacts, postingSections, type PostingFact, type PostingSection } 
 import { keywordMatch } from "@/lib/keywords";
 import { skillsMentioned } from "@/lib/jobFacts";
 import { bumpUsage } from "@/lib/usage";
+import { trustOf } from "@/lib/authenticity";
+import { PriorityBreakdown, ReadinessCard } from "./ReadinessCard";
 import { EMAIL_TYPES, type NextStepsPlan, type Profile, type ScoredJob } from "@/lib/types";
 
 type Props = {
@@ -19,6 +21,8 @@ type Props = {
   onTailor: (job: ScoredJob) => void;
   onOpenJob: (job: ScoredJob) => void;
   onClose: () => void;
+  compared?: boolean;
+  onCompare?: () => void;
 };
 
 type Live = { status: "loading" | "open" | "closed" | "unknown" | "error"; checkedAt?: string };
@@ -53,7 +57,7 @@ const SECTION_LABEL: Record<PostingSection["kind"], string> = {
   other: "More details",
 };
 
-export default function InternshipDetail({ job: listed, profile, allJobs, tracked, onSave, onOpenSaved, onTailor, onOpenJob, onClose }: Props) {
+export default function InternshipDetail({ job: listed, profile, allJobs, tracked, onSave, onOpenSaved, onTailor, onOpenJob, onClose, compared, onCompare }: Props) {
   const [job, setJob] = useState<ScoredJob>(listed);
   const [live, setLive] = useState<Live>({ status: listed.source === "simplify" ? "unknown" : "loading" });
   const [explain, setExplain] = useState(false);
@@ -86,6 +90,7 @@ export default function InternshipDetail({ job: listed, profile, allJobs, tracke
   }, [onClose]);
 
   const facts = useMemo(() => postingFacts(job), [job]);
+  const trust = useMemo(() => trustOf(job), [job]);
   const sections = useMemo(() => postingSections(job.description), [job.description]);
   const km = useMemo(() => keywordMatch(job, profile), [job, profile]);
   const mine = useMemo(() => skillsMentioned(job, profile.skills, 10), [job, profile.skills]);
@@ -120,6 +125,10 @@ export default function InternshipDetail({ job: listed, profile, allJobs, tracke
                 {job.postedAt && <span>Posted or updated {ago(job.postedAt)}</span>}
                 <LiveBadge live={live} source={job.source} />
               </p>
+              <p className="mt-1.5 text-xs">
+                <span className={`tag ${trust.level === "suspicious" ? "border-rose-400 bg-rose-50 text-rose-700" : trust.level === "official" ? "tag-accent" : "tag-soft"}`}>{trust.level === "suspicious" ? "⚠ " : trust.level === "official" ? "✓ " : ""}{trust.label}</span>{" "}
+                <span className="text-slate-500">{trust.detail}</span>
+              </p>
             </div>
             <button onClick={onClose} aria-label="Close" className="-mr-1 -mt-1 rounded-full p-2 text-slate-500 hover:bg-slate-200 hover:text-slate-800">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
@@ -133,7 +142,17 @@ export default function InternshipDetail({ job: listed, profile, allJobs, tracke
               <button onClick={() => onSave(job, planCache.get(job.id))} className="btn-secondary">＋ Save to Applications</button>
             )}
             <button onClick={() => onTailor(job)} className="btn-secondary">✍️ Tailor my resume</button>
+            {onCompare && <button onClick={onCompare} aria-pressed={!!compared} className="btn-secondary">{compared ? "✓ In comparison" : "⇄ Compare"}</button>}
           </div>
+          {trust.flags.length > 0 && (
+            <div role="alert" className="mt-4 rounded-md border border-rose-300 bg-rose-50 p-3 text-sm text-rose-900">
+              <p className="font-semibold">Be careful with this listing</p>
+              <ul className="mt-1 list-disc space-y-1 pl-5">
+                {trust.flags.map((f) => <li key={f.label}>{f.label}{f.quote ? <span className="block text-xs italic text-rose-800/80">“{f.quote}”</span> : null}</li>)}
+              </ul>
+              <p className="mt-1.5 text-xs">Real employers don&apos;t charge you to apply or ask for bank details before an offer. If unsure, find the role on the company&apos;s own careers page.</p>
+            </div>
+          )}
         </div>
 
         <div className="space-y-8 p-5">
@@ -149,6 +168,13 @@ export default function InternshipDetail({ job: listed, profile, allJobs, tracke
             {facts.length <= 2 && (
               <p className="mt-2 text-sm text-slate-500">This listing doesn&apos;t say much. Open the posting for dates, pay and requirements before you apply.</p>
             )}
+          </section>
+
+          {/* Should you apply? */}
+          <section aria-labelledby="apply-h" className="space-y-2">
+            <h3 id="apply-h" className="text-xs font-semibold uppercase tracking-wider text-slate-500">Should you apply, and are you ready?</h3>
+            <PriorityBreakdown job={job} profile={profile} />
+            <ReadinessCard job={job} profile={profile} />
           </section>
 
           {/* Next steps */}

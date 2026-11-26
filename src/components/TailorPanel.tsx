@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { downloadResumePdf } from "@/lib/resumePdf";
 import { bumpUsage } from "@/lib/usage";
+import { markReady } from "@/lib/readiness";
 import type { Job, Profile, TailoredResume } from "@/lib/types";
 
 type Props = { profile: Profile; job: Job; onClose: () => void };
@@ -23,6 +24,7 @@ export default function TailorPanel({ profile, job, onClose }: Props) {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
         bumpUsage("resumesTailored");
+        markReady(job.id, "tailoredAt");
         if (!cancelled) setResume(data.resume);
       } catch (e) {
         if (!cancelled) setError((e as Error).message || "Could not tailor resume.");

@@ -141,6 +141,19 @@ export function postingFacts(job: Job): PostingFact[] {
   return out;
 }
 
+// The graduation years a posting accepts, if it says ("graduating between
+// December 2027 and June 2028" → 2027–2028; "2027 or later" → 2027–∞).
+export function gradWindow(job: Job): { from: number; to: number; quote: string } | null {
+  const text = `${job.title}\n${job.description}`;
+  const hit = find(text, GRAD);
+  if (!hit) return null;
+  const years = (hit.m[0].match(/20\d\d/g) || []).map(Number);
+  if (!years.length) return null;
+  const from = Math.min(...years);
+  const to = /or later|or after/i.test(hit.m[0]) ? 9999 : /or earlier|or sooner/i.test(hit.m[0]) ? from : Math.max(...years);
+  return { from: /or earlier|or sooner/i.test(hit.m[0]) ? 0 : from, to, quote: hit.quote };
+}
+
 // Ordered: "preferred" before "requirements" so "Preferred qualifications" isn't
 // read as a requirement, and "role" before "about" so "About the role" is the role.
 const KINDS: [SectionKind, RegExp][] = [

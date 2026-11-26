@@ -11,13 +11,14 @@ import ChatWidget from "@/components/ChatWidget";
 import Impact from "@/components/Impact";
 import HowItWorks from "@/components/HowItWorks";
 import OpportunityPanel from "@/components/OpportunityPanel";
+import SkillGaps from "@/components/SkillGaps";
 import ResumeBuilder from "@/components/ResumeBuilder";
 import { followUpDue, useTracker } from "@/lib/tracker";
 import type { Profile } from "@/lib/types";
 
 const PROFILE_KEY = "internagent.profile";
 
-type Tab = "search" | "build" | "tracker" | "impact" | "how";
+type Tab = "search" | "build" | "skills" | "tracker" | "impact" | "how";
 
 const STATS = [
   { value: "4,600+", label: "live internships from official job boards" },
@@ -77,6 +78,7 @@ export default function Home() {
           <nav className="order-3 -mx-4 flex basis-full gap-4 overflow-x-auto whitespace-nowrap px-4 [scrollbar-width:none] sm:gap-5 sm:order-2 sm:mx-0 sm:ml-auto sm:basis-auto sm:px-0">
             <button className={tabClass("search")} onClick={() => setTab("search")}>Search</button>
             <button className={tabClass("build")} onClick={() => setTab("build")}>Build a resume</button>
+            <button className={tabClass("skills")} onClick={() => setTab("skills")}>Skill gaps</button>
             <button className={tabClass("tracker")} onClick={() => setTab("tracker")}>
               Applications
               <span className="ml-1.5 rounded-[3px] border border-slate-300 px-1.5 text-[11px] text-slate-600">{tracker.apps.length}</span>
@@ -150,6 +152,7 @@ export default function Home() {
         </div>
 
         {tab === "build" && <ResumeBuilder profile={profile} onUseProfile={(p) => { updateProfile(p); setTab("search"); window.scrollTo({ top: 0 }); }} />}
+        {tab === "skills" && <SkillGaps profile={profile} onSearch={() => setTab("search")} />}
         {tab === "impact" && <Impact apps={tracker.apps} onSearch={() => setTab("search")} />}
         {tab === "how" && <HowItWorks profile={profile} />}
 

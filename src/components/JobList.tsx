@@ -5,6 +5,9 @@ import { keywordScore } from "@/lib/jobs";
 import TailorPanel from "./TailorPanel";
 import CompanyLogo from "./CompanyLogo";
 import InternshipDetail from "./InternshipDetail";
+import ComparePanel from "./ComparePanel";
+import { priorityOf } from "@/lib/priority";
+import { trustOf } from "@/lib/authenticity";
 import { hourlyPay, jobFacts, skillsMentioned } from "@/lib/jobFacts";
 import { bumpUsage } from "@/lib/usage";
 import { keywordMatch } from "@/lib/keywords";
@@ -63,13 +66,16 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
   const [shown, setShown] = useState(PAGE);
   const [tailoring, setTailoring] = useState<Job | null>(null);
   const [detail, setDetail] = useState<ScoredJob | null>(null);
+  const [compare, setCompare] = useState<ScoredJob[]>([]);
+  const [comparing, setComparing] = useState(false);
+  const toggleCompare = (j: ScoredJob) => setCompare((c) => (c.some((x) => x.id === j.id) ? c.filter((x) => x.id !== j.id) : c.length >= 3 ? c : [...c, j]));
   const [place, setPlace] = useState<Place | null>(null);
   const [where, setWhere] = useState<"all" | "near" | "remote">("all");
   const [locating, setLocating] = useState(false);
   const [category, setCategory] = useState("");
   const [paidOnly, setPaidOnly] = useState(false);
   const [hideSaved, setHideSaved] = useState(false);
-  const [sort, setSort] = useState<"match" | "newest" | "keywords" | "pay" | "company">("match");
+  const [sort, setSort] = useState<"match" | "priority" | "newest" | "keywords" | "pay" | "company">("match");
   const [sponsorOnly, setSponsorOnly] = useState(false);
   const [newOnly, setNewOnly] = useState(false);
   // Jobs that weren't there on the student's last search (like job-alert "new" badges).
@@ -143,6 +149,9 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
   }, [facts]);
   const matches = useMemo(() => new Map(jobs.map((j) => [j.id, keywordMatch(j, profile)])), [jobs, profile]);
   const payOf = (id: string) => hourlyPay(facts.get(id)?.pay);
+  // Apply-first priority (match, eligibility, deadline, freshness, pay listed).
+  const priorities = useMemo(() => new Map(jobs.map((j) => [j.id, priorityOf(j, profile)])), [jobs, profile]);
+  const trust = useMemo(() => new Map(jobs.map((j) => [j.id, trustOf(j)])), [jobs]);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -157,13 +166,14 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
       if (where === "near" && place) return isNear(j.location, place) || isRemote(j.location);
       return true;
     });
+    if (sort === "priority") return [...list].sort((a, b) => (priorities.get(b.id)?.score ?? 0) - (priorities.get(a.id)?.score ?? 0));
     if (sort === "newest") return [...list].sort((a, b) => (b.postedAt || "").localeCompare(a.postedAt || ""));
     if (sort === "keywords") return [...list].sort((a, b) => (matches.get(b.id)?.pct ?? -1) - (matches.get(a.id)?.pct ?? -1));
     if (sort === "pay") return [...list].sort((a, b) => payOf(b.id) - payOf(a.id));
     if (sort === "company") return [...list].sort((a, b) => a.company.localeCompare(b.company));
     return [...list].sort((a, b) => (b.fit?.score ?? -1) - (a.fit?.score ?? -1));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jobs, query, where, place, category, paidOnly, hideSaved, sort, facts, trackedIds, sponsorOnly, newOnly, newIds, matches]);
+  }, [jobs, query, where, place, category, paidOnly, hideSaved, sort, facts, trackedIds, sponsorOnly, newOnly, newIds, matches, priorities]);
 
   async function scoreWithAI() {
     setError("");
@@ -283,6 +293,7 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
           <span className="text-slate-500">Sort</span>
           <select value={sort} onChange={(e) => setSort(e.target.value as typeof sort)} className="field w-auto py-1.5">
             <option value="match">Best match</option>
+            <option value="priority">Apply first (priority)</option>
             <option value="newest">Newest</option>
             <option value="keywords">Keyword match</option>
             <option value="pay">Highest pay listed</option>
@@ -304,6 +315,7 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
         <span>{scoredCount} scored by AI</span>
       </div>
       {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+      {visible.length > 0 && <ApplyFirst jobs={visible.filter((j) => !trackedIds.has(j.id))} priorities={priorities} onOpen={setDetail} onSortPriority={() => { setSort("priority"); setShown(PAGE); }} sortedByPriority={sort === "priority"} />}
 
       {visible.length === 0 && (
         <div className="card p-6 text-center text-sm text-slate-600">
@@ -334,7 +346,7 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-1.5 text-sm">
                     <span className="mr-1 font-semibold text-slate-700">{j.company}</span>
-                    <span className="tag tag-accent">{f.sourceLabel}</span>
+                    <span title={trust.get(j.id)?.detail} className={`tag ${trust.get(j.id)?.level === "suspicious" ? "border-rose-400 bg-rose-50 text-rose-700" : trust.get(j.id)?.level === "official" ? "tag-accent" : "tag-soft"}`}>{trust.get(j.id)?.level === "suspicious" ? "⚠ " : trust.get(j.id)?.level === "official" ? "✓ " : ""}{trust.get(j.id)?.label}</span>
                     {f.category && <span className="tag tag-soft">{f.category}</span>}
                     {f.workplace && <span className="tag tag-soft">{f.workplace}</span>}
                     {newIds.has(j.id) && <span className="tag bg-emerald-100 text-emerald-800">New</span>}
@@ -417,6 +429,9 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
                       {tracked ? "✓ Saved · Next steps" : "＋ Save & get next steps"}
                     </button>
                     <button onClick={() => setDetail(j)} className="btn-secondary">Details &amp; next steps →</button>
+                    <label className={`flex cursor-pointer items-center gap-1.5 text-sm text-slate-600 ${compare.length >= 3 && !compare.some((x) => x.id === j.id) ? "opacity-50" : ""}`}>
+                      <input type="checkbox" checked={compare.some((x) => x.id === j.id)} onChange={() => toggleCompare(j)} disabled={compare.length >= 3 && !compare.some((x) => x.id === j.id)} className="h-4 w-4 accent-blue-600" /> Compare
+                    </label>
                   </div>
                 </div>
                 <div className="hidden sm:block">
@@ -437,6 +452,18 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
       )}
 
       {tailoring && <TailorPanel profile={profile} job={tailoring} onClose={() => setTailoring(null)} />}
+      {compare.length > 0 && !detail && !comparing && (
+        <div className="fixed inset-x-0 bottom-4 z-40 flex justify-center px-4">
+          <div className="flex flex-wrap items-center gap-3 rounded-full border border-slate-200 bg-surface px-4 py-2 shadow-lg">
+            <span className="text-sm text-slate-700">{compare.length} of 3 selected</span>
+            <button onClick={() => setComparing(true)} disabled={compare.length < 2} className="btn-primary px-4 py-1.5 disabled:opacity-50">Compare{compare.length < 2 ? " (pick 2+)" : ""}</button>
+            <button onClick={() => setCompare([])} className="text-sm text-slate-500 underline underline-offset-2">Clear</button>
+          </div>
+        </div>
+      )}
+      {comparing && compare.length > 0 && !detail && (
+        <ComparePanel jobs={compare} profile={profile} onOpen={(j) => setDetail(j)} onRemove={(id) => setCompare((c) => c.filter((x) => x.id !== id))} onClose={() => setComparing(false)} />
+      )}
       {detail && !tailoring && (
         <InternshipDetail
           job={detail}
@@ -447,9 +474,43 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
           onOpenSaved={(id) => { setDetail(null); onOpen(id); }}
           onTailor={(j) => setTailoring(j)}
           onOpenJob={setDetail}
+          compared={compare.some((x) => x.id === detail.id)}
+          onCompare={() => toggleCompare(detail)}
           onClose={() => setDetail(null)}
         />
       )}
+    </section>
+  );
+}
+
+// "Apply to these first": the top 3 unsaved internships by priority, each with
+// the factor that helped it most, so the ranking is never a black box.
+function ApplyFirst({ jobs, priorities, onOpen, onSortPriority, sortedByPriority }: {
+  jobs: ScoredJob[]; priorities: Map<string, ReturnType<typeof priorityOf>>; onOpen: (j: ScoredJob) => void; onSortPriority: () => void; sortedByPriority: boolean;
+}) {
+  const top = [...jobs].sort((a, b) => (priorities.get(b.id)?.score ?? 0) - (priorities.get(a.id)?.score ?? 0)).slice(0, 3);
+  if (!top.length) return null;
+  return (
+    <section aria-labelledby="apply-first-h" className="rounded-md border border-blue-200 bg-blue-50/40 p-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 id="apply-first-h" className="text-sm font-semibold text-slate-900">Apply to these first</h2>
+        {!sortedByPriority && <button onClick={onSortPriority} className="text-xs font-medium text-blue-700 underline underline-offset-2">Sort the whole list this way</button>}
+      </div>
+      <ol className="mt-2 space-y-1.5">
+        {top.map((j, i) => {
+          const p = priorities.get(j.id)!;
+          const strong = [...p.factors].sort((a, b) => b.points / b.max - a.points / a.max)[0];
+          return (
+            <li key={j.id}>
+              <button onClick={() => onOpen(j)} className="flex w-full items-baseline gap-2 rounded px-1 py-0.5 text-left text-sm hover:bg-blue-100/60">
+                <span className="shrink-0 font-semibold tabular-nums text-blue-700">{p.score}</span>
+                <span className="min-w-0 flex-1"><b className="font-medium text-slate-900">{i + 1}. {j.title}</b> <span className="text-slate-600">at {j.company}</span><span className="block text-xs text-slate-500">{strong.label}: {strong.note}{p.warnings.length ? ` · ⚠ ${p.warnings[0]}` : ""}</span></span>
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+      <p className="mt-2 text-xs text-slate-500">Priority = match (40) + eligibility (20) + deadline (20) + freshness (10) + pay listed (10). Open one to see its breakdown.</p>
     </section>
   );
 }

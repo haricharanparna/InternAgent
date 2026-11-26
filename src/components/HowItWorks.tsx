@@ -326,7 +326,22 @@ export default function HowItWorks({ profile }: { profile: Profile | null }) {
         <Formula>near(job) ⇔ location contains your city OR your state&apos;s name OR matches &quot;, XX&quot; (your state code)&nbsp;&nbsp;·&nbsp;&nbsp;remote roles are always included</Formula>
       </Section>
 
-      <Section n={9} title="Reliability">
+      <Section n={9} title="Apply first, readiness, trust and skill gaps">
+        <P>Four more scores, all plain code you can check:</P>
+        <Formula>
+          priority = match·0.4 (AI fit, else keyword %) + eligibility (20 if your graduation year is in the posting&apos;s window, 3 if the title says PhD/MBA/Master&apos;s and your resume doesn&apos;t) + deadline (20 if ≤ 7 days, 15 if ≤ 21, 9 later, 0 passed) + freshness (10 / 7 / 4 / 1 for ≤ 7 / 30 / 90 days / older) + pay listed (10, else 4)
+          <br />
+          unknown facts get middle points, never zero · readiness = checks done ÷ checks shown
+          <br />
+          trust: official = from the company&apos;s own Greenhouse / Lever / Ashby API · third-party = SimplifyJobs · added by you = unverified
+          <br />
+          scam signs (listings not from an official board): fees, gift cards / wire / crypto, SSN or bank details, chat-app-only interviews, $500+/day pay, link shorteners, links not on the company&apos;s site or a known hiring platform; anti-fraud notices (&quot;we will never ask…&quot;) are ignored
+          <br />
+          skill gap rank = postings where that skill alone lifts keyword match to ≥ 70%, then postings that name it · what-if = strong matches recounted with the skills you tick
+        </Formula>
+      </Section>
+
+      <Section n={10} title="Reliability">
         <ul className="max-w-3xl list-disc space-y-1.5 pl-5 text-[15px] leading-relaxed text-slate-700">
           <li>
             <b>Model fallback:</b> {models.length ? models.join(" → ") : "three Gemini models"}. If one is overloaded (429, 500,
@@ -339,7 +354,7 @@ export default function HowItWorks({ profile }: { profile: Profile | null }) {
         </ul>
       </Section>
 
-      <Section n={10} title="API reference">
+      <Section n={11} title="API reference">
         <div className="overflow-x-auto rounded-md border border-slate-200">
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">

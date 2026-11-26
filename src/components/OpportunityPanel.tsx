@@ -2,12 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import { STATUSES, toOpportunity, type TrackedApp } from "@/lib/tracker";
-import { EMAIL_TYPES, type EmailDraft, type EmailType, type NextStepsPlan, type Profile } from "@/lib/types";
+import { EMAIL_TYPES, type EmailDraft, type EmailType, type NextStepsPlan, type Profile, type ScoredJob } from "@/lib/types";
 import { bumpUsage } from "@/lib/usage";
 import CompanyLogo from "./CompanyLogo";
 import InterviewPrep from "./InterviewPrep";
 import Contacts from "./Contacts";
 import { printLetter } from "@/lib/resumePdf";
+import { markReady } from "@/lib/readiness";
+import { ReadinessCard } from "./ReadinessCard";
 
 type Props = {
   app: TrackedApp;
@@ -24,6 +26,13 @@ const DEFAULT_EMAIL: Record<TrackedApp["status"], EmailType> = {
   offer: "accept",
   rejected: "thank_you",
 };
+
+// A saved application as a job, for the readiness checks.
+const appAsJob = (a: TrackedApp): ScoredJob => ({
+  id: a.id, title: a.title, company: a.company, location: a.location, url: a.url, source: "greenhouse", custom: a.custom,
+  description: a.description || "", deadline: a.deadline,
+  fit: a.fitScore !== undefined ? { id: a.id, score: a.fitScore, matched: a.matched || [], missing: a.missing || [], reason: "" } : undefined,
+});
 
 const post = async <T,>(url: string, body: unknown): Promise<T> => {
   const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -162,6 +171,7 @@ function Steps({ app, profile, onUpdate, onWriteEmail }: {
 
   return (
     <div className="space-y-6">
+      {app.status === "saved" && <ReadinessCard job={appAsJob(app)} profile={profile} app={app} />}
       <p className="border-l-2 border-blue-500 pl-3 text-[15px] leading-relaxed text-slate-800">{fresh.headline}</p>
 
       <ol className="space-y-2">
@@ -233,6 +243,7 @@ function EmailWriter({ app, profile, type, setType, initialRecipient = "" }: {
         profile, opportunity: toOpportunity(app), type, recipient, extra,
       });
       bumpUsage("emailsWritten");
+      if (type === "cover_letter") markReady(app.id, "coverLetterAt");
       setDraft(draft);
     } catch (e) {
       setError((e as Error).message);
