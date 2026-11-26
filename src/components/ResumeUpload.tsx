@@ -1,5 +1,7 @@
 "use client";
 
+import ProfileEditor from "./ProfileEditor";
+
 import { useRef, useState } from "react";
 import { LogoMark } from "./Logo";
 import type { Profile } from "@/lib/types";
@@ -99,6 +101,7 @@ export default function ResumeUpload({ profile, onProfile }: Props) {
               </ul>
             </div>
           </div>
+          <ProfileEditor profile={profile} onProfile={onProfile} />
         </div>
       </section>
     );

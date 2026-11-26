@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { BuilderAnswers, BuilderExperience, BuiltResume, ExperienceKind, Profile, ResumeTemplate } from "@/lib/types";
 import { builtResumeText, printBuiltResume } from "@/lib/resumePdf";
+import { builtResumeParas, downloadDocx } from "@/lib/docx";
 import { bumpUsage } from "@/lib/usage";
 
 // Resume builder: asks a few plain questions, has the AI turn the answers
@@ -342,6 +343,7 @@ function Editor({ resume: r, onChange, busy, error, note, onBack, onRegenerate, 
             </select>
           </label>
           <button onClick={() => printBuiltResume(r)} className="btn-primary">⬇ Download PDF</button>
+          <button onClick={() => downloadDocx(builtResumeParas(r), `${(r.name || "Resume").replace(/[^\w]+/g, "_")}_Resume.docx`)} className="btn-secondary">⬇ Word (.docx)</button>
           <button onClick={onCopy} className="btn-secondary">Copy as text</button>
           <button onClick={() => { onUse(); setUsed(true); }} className="btn-secondary">{used ? "✓ Using for job search" : "Use it to find internships"}</button>
         </div>

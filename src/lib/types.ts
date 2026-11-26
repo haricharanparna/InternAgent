@@ -71,7 +71,7 @@ export type TailoredResume = {
 
 // ---------- Chosen opportunities: next steps and emails ----------
 
-export type AppStatus = "saved" | "applied" | "interview" | "offer" | "rejected";
+export type AppStatus = "saved" | "applied" | "assessment" | "interview" | "offer" | "rejected" | "withdrawn";
 
 // What the server needs to know about one tracked internship.
 export type Opportunity = {

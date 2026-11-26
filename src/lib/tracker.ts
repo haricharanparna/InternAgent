@@ -6,9 +6,11 @@ import type { AppStatus, Contact, InterviewPrep, NextStepsPlan, Opportunity, Sco
 export const STATUSES = [
   { id: "saved", label: "Saved", color: "bg-slate-100 text-slate-700" },
   { id: "applied", label: "Applied", color: "bg-blue-100 text-blue-700" },
+  { id: "assessment", label: "Assessment", color: "bg-violet-100 text-violet-800" },
   { id: "interview", label: "Interview", color: "bg-amber-100 text-amber-800" },
   { id: "offer", label: "Offer", color: "bg-emerald-100 text-emerald-800" },
   { id: "rejected", label: "Rejected", color: "bg-rose-100 text-rose-700" },
+  { id: "withdrawn", label: "Withdrawn", color: "bg-slate-200 text-slate-600" },
 ] as const;
 
 export type Status = AppStatus;
@@ -102,7 +104,8 @@ export function useTracker() {
       prev.map((a) => {
         if (a.id !== id) return a;
         const next = { ...a, ...patch };
-        if (patch.status === "applied" && !a.appliedAt) next.appliedAt = new Date().toISOString();
+        // Any stage past "saved" (except withdrawing before applying) means it was sent.
+        if (patch.status && patch.status !== "saved" && patch.status !== "withdrawn" && !a.appliedAt) next.appliedAt = new Date().toISOString();
         return next;
       }),
     );

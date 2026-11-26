@@ -58,8 +58,8 @@ export default function Tracker({ apps, onUpdate, onRemove, onBrowse, onOpen, on
     );
   }
 
-  const sent = apps.filter((a) => a.status !== "saved");
-  const heardBack = sent.filter((a) => ["interview", "offer", "rejected"].includes(a.status));
+  const sent = apps.filter((a) => a.status !== "saved" && !(a.status === "withdrawn" && !a.appliedAt));
+  const heardBack = sent.filter((a) => ["assessment", "interview", "offer", "rejected"].includes(a.status));
   const due = apps.filter((a) => followUpDue(a));
   const stats = [
     { label: "Tracked", value: apps.length },
@@ -129,7 +129,7 @@ export default function Tracker({ apps, onUpdate, onRemove, onBrowse, onOpen, on
         </div>
       )}
 
-      <div className="grid gap-3 lg:grid-cols-5">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-7">
         {STATUSES.map((col) => {
           const items = apps.filter((a) => a.status === col.id);
           return (
@@ -227,7 +227,7 @@ function Card({ app, onUpdate, onRemove, onOpen }: { app: TrackedApp; onUpdate: 
           </label>
           <label className="block text-xs text-slate-500">
             Interview date and time
-            <input type="datetime-local" value={app.interviewAt || ""} onChange={(e) => onUpdate(app.id, { interviewAt: e.target.value || undefined, ...(e.target.value && app.status !== "offer" && app.status !== "rejected" ? { status: "interview" as Status } : {}) })} className="mt-0.5 w-full rounded-md bg-slate-50 px-2 py-1 text-xs text-slate-800 ring-1 ring-slate-200" />
+            <input type="datetime-local" value={app.interviewAt || ""} onChange={(e) => onUpdate(app.id, { interviewAt: e.target.value || undefined, ...(e.target.value && app.status !== "offer" && app.status !== "rejected" && app.status !== "withdrawn" ? { status: "interview" as Status } : {}) })} className="mt-0.5 w-full rounded-md bg-slate-50 px-2 py-1 text-xs text-slate-800 ring-1 ring-slate-200" />
           </label>
           <textarea
             value={app.notes}

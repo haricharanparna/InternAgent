@@ -81,8 +81,8 @@ export default function Impact({ apps, onSearch }: { apps: TrackedApp[]; onSearc
 
   useEffect(() => setUsage(readUsage()), []);
 
-  const applied = apps.filter((a) => a.status !== "saved");
-  const heard = applied.filter((a) => ["interview", "offer", "rejected"].includes(a.status));
+  const applied = apps.filter((a) => a.status !== "saved" && !(a.status === "withdrawn" && !a.appliedAt));
+  const heard = applied.filter((a) => ["assessment", "interview", "offer", "rejected"].includes(a.status));
   const interviews = apps.filter((a) => a.status === "interview" || a.status === "offer").length;
   const due = apps.filter((a) => followUpDue(a)).length;
   const minutes = usage.resumesTailored * tTailor + usage.postingsScored * tScreen + usage.rolesExplained * tResearch + usage.emailsWritten * tEmail;

@@ -9,6 +9,7 @@ import { skillsMentioned } from "@/lib/jobFacts";
 import { bumpUsage } from "@/lib/usage";
 import { trustOf } from "@/lib/authenticity";
 import { PriorityBreakdown, ReadinessCard } from "./ReadinessCard";
+import { KEYS, useStored, type Report } from "@/lib/prefs";
 import { EMAIL_TYPES, type NextStepsPlan, type Profile, type ScoredJob } from "@/lib/types";
 
 type Props = {
@@ -23,6 +24,7 @@ type Props = {
   onClose: () => void;
   compared?: boolean;
   onCompare?: () => void;
+  onHide?: () => void;
 };
 
 type Live = { status: "loading" | "open" | "closed" | "unknown" | "error"; checkedAt?: string };
@@ -57,7 +59,7 @@ const SECTION_LABEL: Record<PostingSection["kind"], string> = {
   other: "More details",
 };
 
-export default function InternshipDetail({ job: listed, profile, allJobs, tracked, onSave, onOpenSaved, onTailor, onOpenJob, onClose, compared, onCompare }: Props) {
+export default function InternshipDetail({ job: listed, profile, allJobs, tracked, onSave, onOpenSaved, onTailor, onOpenJob, onClose, compared, onCompare, onHide }: Props) {
   const [job, setJob] = useState<ScoredJob>(listed);
   const [live, setLive] = useState<Live>({ status: listed.source === "simplify" ? "unknown" : "loading" });
   const [explain, setExplain] = useState(false);
@@ -246,6 +248,8 @@ export default function InternshipDetail({ job: listed, profile, allJobs, tracke
             )}
           </section>
 
+          <Feedback job={job} onHide={onHide} />
+
           {more.length > 0 && (
             <section aria-labelledby="more-h">
               <h3 id="more-h" className="text-xs font-semibold uppercase tracking-wider text-slate-500">More internships at {job.company}</h3>
@@ -409,5 +413,44 @@ function PreviewSteps({ job, profile, deadline, matched, missing, onSave }: {
         <button onClick={() => onSave(plan)} className="btn-primary px-3 py-1.5">Save with this plan</button>
       </div>
     </div>
+  );
+}
+
+const REASONS = ["The link is broken", "It's closed or no longer listed", "Some information is wrong", "It looks like a scam"];
+
+// "Not for me" hides the internship from your search; "Report a problem" saves
+// a note on this device and, if you want, opens a prefilled GitHub issue you
+// can review before sending. Nothing is sent automatically.
+function Feedback({ job, onHide }: { job: ScoredJob; onHide?: () => void }) {
+  const [reports, setReports] = useStored<Report[]>(KEYS.reports, []);
+  const [open, setOpen] = useState(false);
+  const mine = reports.find((r) => r.id === job.id);
+  const report = (reason: string) => {
+    setReports((list) => [{ id: job.id, title: job.title, company: job.company, reason, at: new Date().toISOString() }, ...list.filter((r) => r.id !== job.id)].slice(0, 100));
+    setOpen(false);
+  };
+  const issue = mine
+    ? `https://github.com/haricharanparna/InternAgent/issues/new?title=${encodeURIComponent(`Listing problem: ${job.title} at ${job.company}`)}&body=${encodeURIComponent(`Problem: ${mine.reason}\nListing: ${job.title} at ${job.company}\nLink: ${job.url}\nSource: ${job.source}`)}`
+    : "";
+  return (
+    <section aria-labelledby="feedback-h" className="rounded-md border border-slate-200 p-3 text-sm">
+      <h3 id="feedback-h" className="sr-only">Feedback on this listing</h3>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        {onHide && <button onClick={onHide} className="text-slate-700 underline underline-offset-2">👎 Not for me: hide it</button>}
+        <button onClick={() => setOpen((o) => !o)} aria-expanded={open} className="text-slate-700 underline underline-offset-2">⚑ Report a problem</button>
+        {mine && <span className="text-slate-500">You reported: {mine.reason.toLowerCase()}.</span>}
+      </div>
+      {open && (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {REASONS.map((r) => <button key={r} onClick={() => report(r)} className="rounded-md border border-slate-300 px-2 py-1 hover:border-slate-500">{r}</button>)}
+        </div>
+      )}
+      {mine && (
+        <p className="mt-2 text-xs text-slate-500">
+          Saved on this device{/closed|scam/i.test(mine.reason) && onHide ? "; you can also hide it above" : ""}.{" "}
+          <a href={issue} target="_blank" rel="noreferrer" className="underline underline-offset-2">Tell the InternAgent maintainers ↗</a> (opens a GitHub issue you can review before sending; it includes only the listing, nothing about you).
+        </p>
+      )}
+    </section>
   );
 }

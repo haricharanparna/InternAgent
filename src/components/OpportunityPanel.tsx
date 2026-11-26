@@ -22,7 +22,9 @@ type Props = {
 const DEFAULT_EMAIL: Record<TrackedApp["status"], EmailType> = {
   saved: "outreach",
   applied: "follow_up",
+  assessment: "follow_up",
   interview: "thank_you",
+  withdrawn: "decline",
   offer: "accept",
   rejected: "thank_you",
 };

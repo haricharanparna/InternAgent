@@ -29,6 +29,8 @@ const SCHEMA = {
 const STAGE_GOAL: Record<Opportunity["status"], string> = {
   saved: "They have NOT applied yet. Focus on preparing a strong application and submitting it.",
   applied: "They have applied and are waiting. Focus on following up at the right time and preparing for a possible interview.",
+  assessment: "They were sent an online assessment or take-home task. Focus on preparing for it, doing it well before any due date, and what comes after.",
+  withdrawn: "They withdrew their application. Focus on closing the loop politely so the door stays open for the future.",
   interview: "They have an interview. Focus on preparing for it and on what to do right after.",
   offer: "They have an offer. Focus on evaluating it, questions to ask, and responding professionally.",
   rejected: "They were not selected. Focus on closing the loop gracefully and what to improve for similar roles.",

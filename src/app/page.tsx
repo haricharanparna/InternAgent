@@ -12,6 +12,7 @@ import Impact from "@/components/Impact";
 import HowItWorks from "@/components/HowItWorks";
 import OpportunityPanel from "@/components/OpportunityPanel";
 import SkillGaps from "@/components/SkillGaps";
+import Notifications from "@/components/Notifications";
 import ResumeBuilder from "@/components/ResumeBuilder";
 import { followUpDue, useTracker } from "@/lib/tracker";
 import type { Profile } from "@/lib/types";
@@ -88,6 +89,7 @@ export default function Home() {
             <button className={tabClass("how")} onClick={() => setTab("how")}>How it works</button>
           </nav>
           <div className="order-2 ml-auto flex items-center gap-1.5 sm:order-3 sm:ml-0">
+            <Notifications apps={tracker.apps} onOpen={setOpenId} onSearch={() => setTab("search")} />
             <ThemeToggle />
             <SettingsPanel />
           </div>

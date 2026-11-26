@@ -8,6 +8,8 @@ import InternshipDetail from "./InternshipDetail";
 import ComparePanel from "./ComparePanel";
 import { priorityOf } from "@/lib/priority";
 import { trustOf } from "@/lib/authenticity";
+import { postingFacts } from "@/lib/postingFacts";
+import { KEYS, useStored, type SavedSearch } from "@/lib/prefs";
 import { hourlyPay, jobFacts, skillsMentioned } from "@/lib/jobFacts";
 import { bumpUsage } from "@/lib/usage";
 import { keywordMatch } from "@/lib/keywords";
@@ -65,7 +67,19 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
   const [query, setQuery] = useState("");
   const [shown, setShown] = useState(PAGE);
   const [tailoring, setTailoring] = useState<Job | null>(null);
-  const [detail, setDetail] = useState<ScoredJob | null>(null);
+  const [detail, setDetailState] = useState<ScoredJob | null>(null);
+  const [viewed, setViewed] = useStored<string[]>(KEYS.viewed, []);
+  const [hidden, setHidden] = useStored<string[]>(KEYS.hidden, []);
+  const [searches, setSearches] = useStored<SavedSearch[]>(KEYS.searches, []);
+  const [showHidden, setShowHidden] = useState(false);
+  const [length, setLength] = useState<"" | "short" | "long">("");
+  const [eligibleOnly, setEligibleOnly] = useState(false);
+  // Opening an internship also remembers it under "Recently viewed".
+  const setDetail = (j: ScoredJob | null) => {
+    setDetailState(j);
+    if (j) setViewed((v) => [j.id, ...v.filter((x) => x !== j.id)].slice(0, 10));
+  };
+  const hide = (id: string) => setHidden((h) => (h.includes(id) ? h : [...h, id]));
   const [compare, setCompare] = useState<ScoredJob[]>([]);
   const [comparing, setComparing] = useState(false);
   const toggleCompare = (j: ScoredJob) => setCompare((c) => (c.some((x) => x.id === j.id) ? c.filter((x) => x.id !== j.id) : c.length >= 3 ? c : [...c, j]));
@@ -75,7 +89,7 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
   const [category, setCategory] = useState("");
   const [paidOnly, setPaidOnly] = useState(false);
   const [hideSaved, setHideSaved] = useState(false);
-  const [sort, setSort] = useState<"match" | "priority" | "newest" | "keywords" | "pay" | "company">("match");
+  const [sort, setSort] = useState<"match" | "priority" | "deadline" | "newest" | "keywords" | "pay" | "company">("match");
   const [sponsorOnly, setSponsorOnly] = useState(false);
   const [newOnly, setNewOnly] = useState(false);
   // Jobs that weren't there on the student's last search (like job-alert "new" badges).
@@ -129,7 +143,9 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
         const seen: string[] = JSON.parse(localStorage.getItem(SEEN_KEY) || "[]");
         if (seen.length) {
           const before = new Set(seen);
-          setNewIds(new Set(ranked.filter((j) => !before.has(j.id)).map((j) => j.id)));
+          const fresh = ranked.filter((j) => !before.has(j.id)).map((j) => j.id);
+          setNewIds(new Set(fresh));
+          try { localStorage.setItem(KEYS.newCount, JSON.stringify({ count: fresh.length, at: new Date().toISOString() })); } catch {}
         }
         localStorage.setItem(SEEN_KEY, JSON.stringify(ranked.map((j) => j.id)));
       } catch {}
@@ -152,6 +168,16 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
   // Apply-first priority (match, eligibility, deadline, freshness, pay listed).
   const priorities = useMemo(() => new Map(jobs.map((j) => [j.id, priorityOf(j, profile)])), [jobs, profile]);
   const trust = useMemo(() => new Map(jobs.map((j) => [j.id, trustOf(j)])), [jobs]);
+  // Internship length in weeks, read from the posting ("12-week", "6 months").
+  const weeksOf = useMemo(() => new Map(jobs.map((j) => {
+    const v = postingFacts(j).find((f) => f.key === "length")?.value || "";
+    const words: Record<string, number> = { three: 3, four: 4, five: 5, six: 6, twelve: 12 };
+    const first = v.split(/[–\s]/)[0].toLowerCase();
+    const n = Number(first) || words[first] || 0;
+    return [j.id, n ? (/month/.test(v) ? n * 4.3 : n) : 0] as const;
+  })), [jobs]);
+  const deadlineCount = useMemo(() => jobs.filter((j) => j.deadline).length, [jobs]);
+  const ineligible = (id: string) => (priorities.get(id)?.factors.find((f) => f.label === "Eligibility")?.points ?? 20) < 10;
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -160,6 +186,11 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
       if (category && facts.get(j.id)?.category !== category) return false;
       if (paidOnly && !facts.get(j.id)?.pay) return false;
       if (hideSaved && trackedIds.has(j.id)) return false;
+      if (!showHidden && hidden.includes(j.id)) return false;
+      const weeks = weeksOf.get(j.id) || 0;
+      if (length === "short" && !(weeks > 0 && weeks <= 13)) return false;
+      if (length === "long" && !(weeks > 13)) return false;
+      if (eligibleOnly && ineligible(j.id)) return false;
       if (sponsorOnly && !/offers sponsorship/i.test(facts.get(j.id)?.sponsorship || "")) return false;
       if (newOnly && !newIds.has(j.id)) return false;
       if (where === "remote") return isRemote(j.location);
@@ -167,13 +198,14 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
       return true;
     });
     if (sort === "priority") return [...list].sort((a, b) => (priorities.get(b.id)?.score ?? 0) - (priorities.get(a.id)?.score ?? 0));
+    if (sort === "deadline") return [...list].sort((a, b) => (a.deadline || "9999").localeCompare(b.deadline || "9999"));
     if (sort === "newest") return [...list].sort((a, b) => (b.postedAt || "").localeCompare(a.postedAt || ""));
     if (sort === "keywords") return [...list].sort((a, b) => (matches.get(b.id)?.pct ?? -1) - (matches.get(a.id)?.pct ?? -1));
     if (sort === "pay") return [...list].sort((a, b) => payOf(b.id) - payOf(a.id));
     if (sort === "company") return [...list].sort((a, b) => a.company.localeCompare(b.company));
     return [...list].sort((a, b) => (b.fit?.score ?? -1) - (a.fit?.score ?? -1));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jobs, query, where, place, category, paidOnly, hideSaved, sort, facts, trackedIds, sponsorOnly, newOnly, newIds, matches, priorities]);
+  }, [jobs, query, where, place, category, paidOnly, hideSaved, sort, facts, trackedIds, sponsorOnly, newOnly, newIds, matches, priorities, hidden, showHidden, length, eligibleOnly, weeksOf]);
 
   async function scoreWithAI() {
     setError("");
@@ -294,6 +326,7 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
           <select value={sort} onChange={(e) => setSort(e.target.value as typeof sort)} className="field w-auto py-1.5">
             <option value="match">Best match</option>
             <option value="priority">Apply first (priority)</option>
+            <option value="deadline">Deadline (soonest first; {deadlineCount} list one)</option>
             <option value="newest">Newest</option>
             <option value="keywords">Keyword match</option>
             <option value="pay">Highest pay listed</option>
@@ -306,22 +339,53 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
           <label className="flex items-center gap-1.5"><input type="checkbox" checked={newOnly} onChange={(e) => { setNewOnly(e.target.checked); setShown(PAGE); }} className="h-4 w-4 accent-blue-600" /> New since last visit ({newIds.size})</label>
         )}
         <label className="flex items-center gap-1.5"><input type="checkbox" checked={hideSaved} onChange={(e) => setHideSaved(e.target.checked)} className="h-4 w-4 accent-blue-600" /> Hide saved</label>
+        <label className="flex items-center gap-2">
+          <span className="text-slate-500">Length</span>
+          <select value={length} onChange={(e) => { setLength(e.target.value as typeof length); setShown(PAGE); }} className="field w-auto py-1.5">
+            <option value="">Any (or not stated)</option>
+            <option value="short">Up to 13 weeks</option>
+            <option value="long">Longer (4+ months)</option>
+          </select>
+        </label>
+        <label className="flex items-center gap-1.5" title="Hides roles whose graduation window excludes your year, or whose title says PhD/MBA/Master's when your resume doesn't"><input type="checkbox" checked={eligibleOnly} onChange={(e) => { setEligibleOnly(e.target.checked); setShown(PAGE); }} className="h-4 w-4 accent-blue-600" /> Hide roles I may not qualify for</label>
       </div>
+
+      <SavedSearches
+        searches={searches}
+        onSave={() => {
+          const parts = [query && `"${query}"`, category, where !== "all" && (where === "remote" ? "Remote" : "Near me"), paidOnly && "Pay listed", sponsorOnly && "Visa", length && (length === "short" ? "≤13 weeks" : "4+ months"), eligibleOnly && "Eligible"].filter(Boolean);
+          const s: SavedSearch = { id: String(Date.now()), name: parts.join(" · ") || "All internships", query, category, where, paidOnly, sponsorOnly, length, eligibleOnly, sort };
+          setSearches((list) => [s, ...list.filter((x) => x.name !== s.name)].slice(0, 8));
+        }}
+        onApply={(s) => { setQuery(s.query); setCategory(s.category); setWhere(s.where === "near" && !place ? "all" : s.where); setPaidOnly(s.paidOnly); setSponsorOnly(s.sponsorOnly); setLength(s.length); setEligibleOnly(s.eligibleOnly); setSort(s.sort as typeof sort); setShown(PAGE); }}
+        onDelete={(id) => setSearches((list) => list.filter((x) => x.id !== id))}
+      />
+      {viewed.some((id) => jobs.some((j) => j.id === id)) && (
+        <div className="flex flex-wrap items-center gap-1.5 text-sm">
+          <span className="text-slate-500">Recently viewed:</span>
+          {viewed.map((id) => jobs.find((j) => j.id === id)).filter((j): j is ScoredJob => !!j).slice(0, 6).map((j) => (
+            <button key={j.id} onClick={() => setDetail(j)} className="max-w-[16rem] truncate rounded-md border border-slate-200 px-2 py-1 text-slate-700 hover:border-slate-400">{j.company}: {j.title}</button>
+          ))}
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center justify-between gap-2 pt-2 text-sm text-slate-500">
         <span>
           <b className="text-slate-800">{visible.length}</b> internships from <b className="text-slate-800">{companies}</b> companies
         </span>
-        <span>{scoredCount} scored by AI</span>
+        <span className="flex items-center gap-3">
+          {hidden.length > 0 && <button onClick={() => setShowHidden((s) => !s)} className="underline underline-offset-2">{showHidden ? "Hide hidden" : `${hidden.length} hidden · show`}</button>}
+          <span>{scoredCount} scored by AI</span>
+        </span>
       </div>
       {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-      {visible.length > 0 && <ApplyFirst jobs={visible.filter((j) => !trackedIds.has(j.id))} priorities={priorities} onOpen={setDetail} onSortPriority={() => { setSort("priority"); setShown(PAGE); }} sortedByPriority={sort === "priority"} />}
+      {visible.length > 0 && <ApplyFirst jobs={visible.filter((j) => !trackedIds.has(j.id) && !hidden.includes(j.id))} priorities={priorities} onOpen={setDetail} onSortPriority={() => { setSort("priority"); setShown(PAGE); }} sortedByPriority={sort === "priority"} />}
 
       {visible.length === 0 && (
         <div className="card p-6 text-center text-sm text-slate-600">
           No internships match these filters.{" "}
           <button
-            onClick={() => { setQuery(""); setCategory(""); setPaidOnly(false); setHideSaved(false); setSponsorOnly(false); setNewOnly(false); setWhere("all"); }}
+            onClick={() => { setQuery(""); setCategory(""); setPaidOnly(false); setHideSaved(false); setSponsorOnly(false); setNewOnly(false); setWhere("all"); setLength(""); setEligibleOnly(false); }}
             className="font-medium text-blue-700 underline underline-offset-2"
           >
             Clear filters
@@ -429,6 +493,11 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
                       {tracked ? "✓ Saved · Next steps" : "＋ Save & get next steps"}
                     </button>
                     <button onClick={() => setDetail(j)} className="btn-secondary">Details &amp; next steps →</button>
+                    {hidden.includes(j.id) ? (
+                      <button onClick={() => setHidden((h) => h.filter((x) => x !== j.id))} className="text-sm text-slate-500 underline underline-offset-2">Unhide</button>
+                    ) : (
+                      <button onClick={() => hide(j.id)} title="Not for me: hide this internship" className="text-sm text-slate-500 underline underline-offset-2">Not for me</button>
+                    )}
                     <label className={`flex cursor-pointer items-center gap-1.5 text-sm text-slate-600 ${compare.length >= 3 && !compare.some((x) => x.id === j.id) ? "opacity-50" : ""}`}>
                       <input type="checkbox" checked={compare.some((x) => x.id === j.id)} onChange={() => toggleCompare(j)} disabled={compare.length >= 3 && !compare.some((x) => x.id === j.id)} className="h-4 w-4 accent-blue-600" /> Compare
                     </label>
@@ -477,6 +546,7 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
           compared={compare.some((x) => x.id === detail.id)}
           onCompare={() => toggleCompare(detail)}
           onClose={() => setDetail(null)}
+          onHide={() => { hide(detail.id); setDetail(null); }}
         />
       )}
     </section>
@@ -512,5 +582,22 @@ function ApplyFirst({ jobs, priorities, onOpen, onSortPriority, sortedByPriority
       </ol>
       <p className="mt-2 text-xs text-slate-500">Priority = match (40) + eligibility (20) + deadline (20) + freshness (10) + pay listed (10). Open one to see its breakdown.</p>
     </section>
+  );
+}
+
+// Saved searches: one click re-applies a set of filters.
+function SavedSearches({ searches, onSave, onApply, onDelete }: {
+  searches: SavedSearch[]; onSave: () => void; onApply: (s: SavedSearch) => void; onDelete: (id: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 text-sm">
+      <button onClick={onSave} className="rounded-md border border-dashed border-slate-300 px-2 py-1 text-slate-600 hover:border-slate-500">☆ Save this search</button>
+      {searches.map((s) => (
+        <span key={s.id} className="inline-flex items-center rounded-md border border-slate-200 bg-surface">
+          <button onClick={() => onApply(s)} className="max-w-[14rem] truncate px-2 py-1 text-slate-700 hover:text-blue-700">★ {s.name}</button>
+          <button onClick={() => onDelete(s.id)} aria-label={`Delete saved search ${s.name}`} className="px-1.5 py-1 text-slate-400 hover:text-slate-700">×</button>
+        </span>
+      ))}
+    </div>
   );
 }

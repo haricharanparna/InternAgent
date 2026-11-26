@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { downloadResumePdf } from "@/lib/resumePdf";
+import { downloadDocx, tailoredResumeParas } from "@/lib/docx";
 import { bumpUsage } from "@/lib/usage";
 import { markReady } from "@/lib/readiness";
 import type { Job, Profile, TailoredResume } from "@/lib/types";
@@ -50,13 +51,21 @@ export default function TailorPanel({ profile, job, onClose }: Props) {
             <h2 className="mt-1 text-lg font-semibold">{job.title}</h2>
             <p className="text-sm text-slate-600">{job.company}</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {resume && (
               <button
                 onClick={() => downloadResumePdf(profile, resume, job.company)}
                 className="btn-primary"
               >
                 Download PDF
+              </button>
+            )}
+            {resume && (
+              <button
+                onClick={() => downloadDocx(tailoredResumeParas(profile, resume), `${(profile.name || "Resume").replace(/[^\w]+/g, "_")}_${job.company.replace(/[^\w]+/g, "_")}.docx`)}
+                className="btn-secondary"
+              >
+                Word
               </button>
             )}
             <button onClick={onClose} className="btn-secondary">
