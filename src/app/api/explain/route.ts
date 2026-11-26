@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { fail } from "@/lib/http";
 import { rateLimited } from "@/lib/rateLimit";
 import { generateJSON } from "@/lib/gemini";
 import type { Job, RoleInfo } from "@/lib/types";
@@ -62,6 +63,8 @@ export async function POST(req: Request) {
   if (limited) return limited;
   try {
     const { job } = (await req.json()) as { job: Job };
+    if (!job?.company || !job?.title) return NextResponse.json({ error: "Missing job." }, { status: 400 });
+    job.description = String(job.description || "");
     const wiki = await companyWiki(job.company);
     const detailed = job.description.length > 400;
 
@@ -91,6 +94,6 @@ Only state facts found above. When inferring from the title, phrase it as "typic
     };
     return NextResponse.json({ info });
   } catch (err) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+    return fail(err);
   }
 }

@@ -32,7 +32,11 @@ export async function generateJSON<T>(parts: Part[], schema: object): Promise<T>
     [{ role: "user", parts }],
     { responseMimeType: "application/json", responseJsonSchema: schema, temperature: 0.2 },
   );
-  return JSON.parse(text) as T;
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new Error("The AI sent back an answer we couldn't read. Please try again.");
+  }
 }
 
 // Plain-text reply for a multi-turn conversation.

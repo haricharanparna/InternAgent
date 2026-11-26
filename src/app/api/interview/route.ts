@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { fail } from "@/lib/http";
+import { dropSentencesWithNewNumbers, scrubFiller } from "@/lib/honesty";
 import { rateLimited } from "@/lib/rateLimit";
 import { generateJSON } from "@/lib/gemini";
 import type { AnswerFeedback, InterviewQuestion, Opportunity, Profile } from "@/lib/types";
@@ -106,9 +108,9 @@ Return:
 - stronger: their answer rewritten to be tighter and better structured, spoken-style, under 170 words. Use ONLY facts in THEIR ANSWER or the RESUME, and don't add dramatizing adjectives they didn't use ("tight deadline", "strict", "successfully"). Keep their own verbs: "I cleaned the data" must not become "I took charge of" or "I led". If a result or number is missing, write a placeholder like [what happened / how many people] instead of inventing one.`;
     const fb = await generateJSON<AnswerFeedback>([{ text: prompt }], F_SCHEMA);
     return NextResponse.json({
-      feedback: { ...fb, stronger: (fb.stronger || "").replace(/\b(successfully|effectively|seamlessly)\s+/gi, ""), score: Math.min(5, Math.max(1, Math.round(fb.score || 1))), strengths: fb.strengths.slice(0, 3), improve: fb.improve.slice(0, 3) },
+      feedback: { ...fb, stronger: scrubFiller(dropSentencesWithNewNumbers(fb.stronger || "", `${answer} ${student(profile)}`)), score: Math.min(5, Math.max(1, Math.round(fb.score || 1))), strengths: (fb.strengths || []).slice(0, 3), improve: (fb.improve || []).slice(0, 3) },
     });
   } catch (err) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+    return fail(err);
   }
 }

@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
+import { fail } from "@/lib/http";
 import { rateLimited } from "@/lib/rateLimit";
 import { generateJSON } from "@/lib/gemini";
 import type { Job, Profile, TailoredResume } from "@/lib/types";
+import { dropSentencesWithNewNumbers, keepKnown, onlyKnownNumbers, scrubFiller } from "@/lib/honesty";
 
 const MAX_DESC = 3500;
 
@@ -40,6 +42,7 @@ export async function POST(req: Request) {
   if (limited) return limited;
   try {
     const { profile, job } = (await req.json()) as { profile: Profile; job: Job };
+    if (!profile?.experiences || !job?.title) return NextResponse.json({ error: "Missing resume or job." }, { status: 400 });
 
     // Number every bullet so the model edits wording only, never structure.
     const numbered = profile.experiences.map((e, exp) => ({
@@ -70,26 +73,33 @@ Return:
 
     // Server-side honesty checks: drop any skill not in the profile, and
     // always take original bullets from the profile, not from the model.
-    const known = new Map(profile.skills.map((s) => [s.toLowerCase(), s]));
-    const skills = [...new Set(out.skills.map((s) => known.get(s.toLowerCase())).filter(Boolean) as string[])];
+    const skills = keepKnown(out.skills, profile.skills);
     for (const s of profile.skills) if (!skills.includes(s)) skills.push(s);
+    // Number guard: a rewrite may not state a number its original bullet doesn't.
+    const everything = [profile.major, profile.school, profile.graduationYear, ...profile.skills,
+      ...profile.experiences.flatMap((e) => [e.title, e.organization, ...e.bullets])].join(" ");
 
     const rewrites = new Map(out.bullets.map((b) => [`${b.exp}:${b.bullet}`, b]));
     const resume: TailoredResume = {
-      summary: out.summary,
+      summary: scrubFiller(dropSentencesWithNewNumbers(out.summary, everything)),
       skills,
       experiences: profile.experiences.map((e, exp) => ({
         title: e.title,
         organization: e.organization,
         bullets: e.bullets.map((original, bullet) => {
           const r = rewrites.get(`${exp}:${bullet}`);
-          return { original, tailored: r?.tailored || original, why: r?.why || "Unchanged" };
+          const tailored = scrubFiller(String(r?.tailored || "").trim());
+          if (!tailored) return { original, tailored: original, why: "Unchanged" };
+          if (!onlyKnownNumbers(tailored, original)) {
+            return { original, tailored: original, why: "Kept your original: the rewrite added a number that isn't in this bullet." };
+          }
+          return { original, tailored, why: r?.why || "Reworded" };
         }),
       })),
-      gaps: out.gaps.slice(0, 5),
+      gaps: (out.gaps || []).slice(0, 5),
     };
     return NextResponse.json({ resume });
   } catch (err) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+    return fail(err);
   }
 }

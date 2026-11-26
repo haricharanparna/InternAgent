@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { fail } from "@/lib/http";
 import { rateLimited } from "@/lib/rateLimit";
 import { generateText } from "@/lib/gemini";
 import type { Profile } from "@/lib/types";
@@ -32,6 +33,7 @@ export async function POST(req: Request) {
   if (limited) return limited;
   try {
     const { messages, profile } = (await req.json()) as { messages: Message[]; profile?: Profile | null };
+    if (!Array.isArray(messages)) return NextResponse.json({ error: "Send a message first." }, { status: 400 });
     const recent = messages.slice(-MAX_MESSAGES).map((m) => ({
       role: m.role === "model" ? "model" : "user",
       parts: [{ text: String(m.text).slice(0, MAX_CHARS) }],
@@ -51,6 +53,6 @@ export async function POST(req: Request) {
     const reply = await generateText(recent, SYSTEM + about);
     return NextResponse.json({ reply });
   } catch (err) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+    return fail(err);
   }
 }

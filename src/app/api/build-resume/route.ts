@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { fail } from "@/lib/http";
+import { onlyKnownNumbers, scrubFiller } from "@/lib/honesty";
 import { rateLimited } from "@/lib/rateLimit";
 import { generateJSON } from "@/lib/gemini";
 import type { BuilderAnswers, BuiltResume } from "@/lib/types";
@@ -58,6 +60,7 @@ export async function POST(req: Request) {
   if (limited) return limited;
   try {
     const { answers: raw } = (await req.json()) as { answers: BuilderAnswers };
+    if (raw && !Array.isArray(raw.experiences)) raw.experiences = [];
     if (!raw?.name?.trim()) return NextResponse.json({ error: "Please add your name first." }, { status: 400 });
 
     const a: BuilderAnswers = {
@@ -136,7 +139,8 @@ Honesty rules (most important):
         const source = `${e.what} ${e.results} ${e.role} ${e.org}`;
         const ai = (out.experiences?.find((x) => x.index === i)?.bullets || [])
           .map((b) => clean(b, 300))
-          .filter((b) => b && (b.match(/\d[\d,.]*/g) || []).every((n) => source.includes(n.replace(/[.,]$/, ""))));
+          .filter((b) => b && onlyKnownNumbers(b, source))
+          .map(scrubFiller);
         return {
           kind: e.kind,
           title: clean(e.role, 100),
@@ -151,6 +155,6 @@ Honesty rules (most important):
     };
     return NextResponse.json({ resume });
   } catch (err) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+    return fail(err);
   }
 }

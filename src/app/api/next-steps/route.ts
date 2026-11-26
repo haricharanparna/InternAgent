@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { fail } from "@/lib/http";
 import { rateLimited } from "@/lib/rateLimit";
 import { generateJSON } from "@/lib/gemini";
 import type { NextStepsPlan, Opportunity, Profile } from "@/lib/types";
@@ -94,6 +95,6 @@ Rules:
     };
     return NextResponse.json({ plan });
   } catch (err) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+    return fail(err);
   }
 }

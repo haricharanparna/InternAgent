@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { fail } from "@/lib/http";
 import {
   ASHBY, CACHE_MINUTES, CURRENT_TERM_RE, GREENHOUSE, LEVER, MAX_AGE_DAYS, fetchInternships, jobsMeta,
 } from "@/lib/jobs";
@@ -72,6 +73,6 @@ export async function GET() {
       { headers: { "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400" } },
     );
   } catch (err) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+    return fail(err);
   }
 }

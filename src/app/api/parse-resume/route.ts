@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { fail } from "@/lib/http";
 import { rateLimited } from "@/lib/rateLimit";
 import { generateJSON } from "@/lib/gemini";
 import type { Profile } from "@/lib/types";
@@ -61,6 +62,6 @@ export async function POST(req: Request) {
     );
     return NextResponse.json({ profile });
   } catch (err) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+    return fail(err);
   }
 }

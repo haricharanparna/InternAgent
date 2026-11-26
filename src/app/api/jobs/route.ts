@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { fail } from "@/lib/http";
 import { fetchInternships } from "@/lib/jobs";
 import { findPay } from "@/lib/jobFacts";
 
@@ -19,6 +20,6 @@ export async function GET() {
     // Vercel's CDN keeps a copy for an hour, so most visitors get it instantly.
     return NextResponse.json({ jobs }, { headers: { "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400" } });
   } catch (err) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+    return fail(err);
   }
 }

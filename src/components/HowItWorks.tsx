@@ -234,7 +234,16 @@ export default function HowItWorks({ profile }: { profile: Profile | null }) {
           original bullet = taken from your profile, not from the AI
           <br />
           any skill the AI adds that isn&apos;t on your resume → dropped
+          <br />
+          numbers(rewrite) ⊄ numbers(original bullet) → keep your original bullet
+          <br />
+          summary sentence with a number not on your resume → removed
         </Formula>
+        <P>
+          The same whole-number check guards the resume builder, ✨ bullet ideas and the &quot;stronger answer&quot; in interview
+          prep, so &quot;2024&quot; on your resume never lets the AI claim &quot;20%&quot; or &quot;4 people&quot;. Filler like
+          &quot;successfully&quot; and &quot;seamlessly&quot; is stripped. These checks have automated tests in the repo.
+        </P>
         <P>
           Each change is shown side by side with your original and a note on why it changed, so you can catch anything you
           disagree with.
@@ -254,7 +263,7 @@ export default function HowItWorks({ profile }: { profile: Profile | null }) {
           stage goal: saved → apply well · applied → follow up · interview → prepare and thank · offer → decide · rejected → close the loop
         </Formula>
         <P>
-          The plan and the 6 email types (reach out, follow up, thank you, referral, accept, decline) use only your resume, your
+          The plan, the cover letter and the 6 email types (reach out, follow up, thank you, referral, accept, decline) use only your resume, your
           notes and the posting. Anything unknown, like a recruiter&apos;s name, becomes a [bracketed] placeholder that the app
           highlights for you to fill in. A skill is never linked to a project unless that project&apos;s bullets mention it.
           Changing the stage rewrites the plan, and your checked-off steps are saved in your browser. If you add an application

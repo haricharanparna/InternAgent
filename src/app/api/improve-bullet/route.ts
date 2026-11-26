@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { fail } from "@/lib/http";
+import { onlyKnownNumbers, scrubFiller } from "@/lib/honesty";
 import { rateLimited } from "@/lib/rateLimit";
 import { generateJSON } from "@/lib/gemini";
 
@@ -42,10 +44,11 @@ Honesty rules: use only facts in BULLET and OTHER BULLETS. No new numbers, tools
     const options = (out.options || [])
       .map((o) => String(o).trim().slice(0, 300))
       .filter((o) => o && o.toLowerCase() !== b.toLowerCase())
-      .filter((o) => (o.match(/\d[\d,.]*/g) || []).every((n) => source.includes(n.replace(/[.,]$/, ""))))
+      .filter((o) => onlyKnownNumbers(o, source))
+      .map(scrubFiller)
       .slice(0, 3);
     return NextResponse.json({ options, question: String(out.question || "").slice(0, 200) });
   } catch (err) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+    return fail(err);
   }
 }

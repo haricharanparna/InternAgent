@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { fail } from "@/lib/http";
 import { rateLimited } from "@/lib/rateLimit";
 import { generateJSON } from "@/lib/gemini";
 import type { Fit, Job, Profile } from "@/lib/types";
@@ -33,6 +34,7 @@ export async function POST(req: Request) {
   if (limited) return limited;
   try {
     const { profile, jobs } = (await req.json()) as { profile: Profile; jobs: Job[] };
+    if (!profile || !Array.isArray(jobs) || !jobs.length) return NextResponse.json({ error: "Missing resume or jobs to score." }, { status: 400 });
     const batch = jobs.slice(0, MAX_JOBS).map((j) => ({
       id: j.id,
       title: j.title,
@@ -59,6 +61,6 @@ Some postings only have a title and category. For those, judge from the title an
     const { fits } = await generateJSON<{ fits: Fit[] }>([{ text: prompt }], FIT_SCHEMA);
     return NextResponse.json({ fits });
   } catch (err) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+    return fail(err);
   }
 }

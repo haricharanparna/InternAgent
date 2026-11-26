@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { fail } from "@/lib/http";
 import { rateLimited } from "@/lib/rateLimit";
 import { generateJSON } from "@/lib/gemini";
 import { EMAIL_TYPES, type EmailDraft, type EmailType, type Opportunity, type Profile } from "@/lib/types";
@@ -94,6 +95,6 @@ Honesty rules (most important):
     const draft = await generateJSON<EmailDraft>([{ text: prompt }], SCHEMA);
     return NextResponse.json({ draft: { ...draft, body: formatBody(draft.body, profile.name), tips: draft.tips.slice(0, 3) } });
   } catch (err) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+    return fail(err);
   }
 }

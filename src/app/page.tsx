@@ -118,6 +118,7 @@ export default function Home() {
             </section>
           )}
 
+          {profile && <h1 className="sr-only">Internship search for {profile.name || "you"}</h1>}
           <ResumeUpload profile={profile} onProfile={updateProfile} />
           {!profile && (
             <p className="-mt-6 text-sm text-slate-600">

@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@google/genai": "^3.3.0",
@@ -20,5 +22,8 @@
     "@types/react-dom": "^19.3.0",
     "tailwindcss": "^4.1.13",
     "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=22.18"
   }
 }
