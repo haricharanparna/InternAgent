@@ -7,7 +7,7 @@ An honest AI agent for students hunting internships. Upload your resume (or buil
 ## Try it in 60 seconds
 1. Open the [live app](https://intern-agent-gs6m.vercel.app) and click **Try with a sample resume** (or upload your own PDF, or open **Build a resume** if you don't have one).
 2. Click **Find internships**, then **Score next 12 with AI**.
-3. On any card, click **Tailor my resume** to see your bullets reworded side by side with the originals, or **About this role** for a plain-English summary.
+3. On any card, click **Tailor my resume** to see your bullets reworded side by side with the originals, or click the title (**Details & next steps**) to see the key facts, the full posting and a next-steps plan for that internship.
 4. Click **Save & get next steps** to see a plan for that job, then try **Emails & cover letter** and **Interview prep**.
 5. Open the **Applications**, **Impact** and **How it works** tabs.
 
@@ -23,7 +23,8 @@ An honest AI agent for students hunting internships. Upload your resume (or buil
 | Info-rich job cards | Source, category, remote/hybrid, a description snippet, term, hourly pay, degree level, visa sponsorship and which of your skills the posting mentions, all read directly from the posting (no AI). |
 | Honest fit scores | 0–100 with matched requirements, missing requirements and a one-line reason. |
 | Tailored resumes | Bullets reworded for one posting, shown next to the originals, downloadable as a PDF. The server drops any skill that isn't on your resume and keeps your original bullet if a rewrite adds a number. |
-| About this role | Plain-English summary of the role, plus company background from Wikipedia with a source link. |
+| Internship details & next steps | Click any internship to open its page: key facts read from the posting with no AI (pay, dates, length, deadline, who can apply, visa sponsorship, workplace, housing, full-time conversion), each with the exact sentence it came from; the full posting split into what you'd do, requirements and nice-to-haves; a live check that the company's job board still lists it; your keyword match; other internships at the same company; and a step-by-step plan for that job written from your resume. Save it and the plan comes with you to Applications. |
+| Plain-English explanation | On the details page: what the role involves, plus company background from Wikipedia with a source link. |
 | Next steps for the job you chose | Saving a job opens a plan written for that posting and your stage (saved, applied, interview, offer, rejected): ordered steps with timing, what to prepare, and the email to send. Dates like the follow-up day are computed by the server, never guessed by the AI. |
 | Internship email writer | Six email types (reach out, follow up, thank you, ask for a referral, accept, decline) drafted from your resume and notes, with [placeholders] for anything unknown, editable, copyable or opened in your email app. |
 | Cover letters | A seventh writer type: a four-paragraph, 230–330 word letter from your resume and the posting, downloadable as a PDF. |
@@ -79,6 +80,7 @@ The **How it works** tab in the app shows all of this with live numbers.
 | Method | Endpoint | Body | Returns |
 |---|---|---|---|
 | GET | `/api/jobs` | none | `{ jobs: Job[] }` |
+| GET | `/api/job?id=` | job id | `{ status: "open" \| "closed" \| "unknown", job? }`, fetched fresh from the company's board |
 | GET | `/api/stats` | none | totals, categories, states, terms, pipeline facts |
 | GET | `/api/health` | none | `{ status, aiConfigured, models }` |
 | POST | `/api/parse-resume` | form-data `resume` (PDF) | `{ profile }` |

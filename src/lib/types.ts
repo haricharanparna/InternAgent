@@ -26,6 +26,11 @@ export type Job = {
   postedAt?: string;
   // Added by the student from another site.
   custom?: boolean;
+  // Structured fields some job boards provide (read as-is, never guessed).
+  team?: string;
+  workplace?: "Remote" | "Hybrid" | "On-site";
+  compensation?: string;
+  deadline?: string; // ISO date the board lists as the application deadline
 };
 
 export type Fit = {

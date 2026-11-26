@@ -70,7 +70,7 @@ export function useTracker() {
     } catch {}
   }, [apps, loaded]);
 
-  const add = useCallback((job: ScoredJob) => {
+  const add = useCallback((job: ScoredJob, extra?: Partial<TrackedApp>) => {
     setApps((prev) =>
       prev.some((a) => a.id === job.id)
         ? prev
@@ -89,6 +89,8 @@ export function useTracker() {
               savedAt: new Date().toISOString(),
               notes: "",
               custom: job.custom,
+              deadline: job.deadline?.slice(0, 10),
+              ...extra,
             },
             ...prev,
           ],

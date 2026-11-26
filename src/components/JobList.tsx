@@ -4,12 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import { keywordScore } from "@/lib/jobs";
 import TailorPanel from "./TailorPanel";
 import CompanyLogo from "./CompanyLogo";
-import RoleDetails from "./RoleDetails";
-import { jobFacts, skillsMentioned } from "@/lib/jobFacts";
+import InternshipDetail from "./InternshipDetail";
+import { hourlyPay, jobFacts, skillsMentioned } from "@/lib/jobFacts";
 import { bumpUsage } from "@/lib/usage";
 import { keywordMatch } from "@/lib/keywords";
 import { PLACE_KEY, isNear, isRemote, locateMe, placeLabel, type Place } from "@/lib/location";
-import type { Fit, Job, Profile, ScoredJob } from "@/lib/types";
+import type { Fit, Job, NextStepsPlan, Profile, ScoredJob } from "@/lib/types";
 
 const PAGE = 25;
 const SEEN_KEY = "internagent.seenJobs";
@@ -51,7 +51,7 @@ function ScoreRing({ score }: { score: number }) {
 type Props = {
   profile: Profile;
   trackedIds: Set<string>;
-  onTrack: (job: ScoredJob) => void;
+  onTrack: (job: ScoredJob, plan?: NextStepsPlan) => void;
   onOpen: (id: string) => void;
 };
 
@@ -62,10 +62,10 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
   const [query, setQuery] = useState("");
   const [shown, setShown] = useState(PAGE);
   const [tailoring, setTailoring] = useState<Job | null>(null);
+  const [detail, setDetail] = useState<ScoredJob | null>(null);
   const [place, setPlace] = useState<Place | null>(null);
   const [where, setWhere] = useState<"all" | "near" | "remote">("all");
   const [locating, setLocating] = useState(false);
-  const [infoOpen, setInfoOpen] = useState<Set<string>>(new Set());
   const [category, setCategory] = useState("");
   const [paidOnly, setPaidOnly] = useState(false);
   const [hideSaved, setHideSaved] = useState(false);
@@ -74,15 +74,6 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
   const [newOnly, setNewOnly] = useState(false);
   // Jobs that weren't there on the student's last search (like job-alert "new" badges).
   const [newIds, setNewIds] = useState<Set<string>>(new Set());
-
-  function toggleInfo(id: string) {
-    setInfoOpen((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
 
   useEffect(() => {
     try {
@@ -151,7 +142,7 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
     return [...count.entries()].sort((a, b) => b[1] - a[1]);
   }, [facts]);
   const matches = useMemo(() => new Map(jobs.map((j) => [j.id, keywordMatch(j, profile)])), [jobs, profile]);
-  const payOf = (id: string) => Number(facts.get(id)?.pay?.match(/\$(\d+)/)?.[1] || 0);
+  const payOf = (id: string) => hourlyPay(facts.get(id)?.pay);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -349,12 +340,14 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
                     {newIds.has(j.id) && <span className="tag bg-emerald-100 text-emerald-800">New</span>}
                     {j.postedAt && <span className="text-xs text-slate-500" title={`Posted or updated ${new Date(j.postedAt).toLocaleDateString()}`}>· {ago(j.postedAt)}</span>}
                   </div>
-                  <h3 className="mt-2 text-xl font-medium leading-snug text-slate-900">{j.title}</h3>
+                  <h3 className="mt-2 text-xl font-medium leading-snug text-slate-900">
+                    <button onClick={() => setDetail(j)} className="text-left hover:text-blue-700 hover:underline hover:decoration-blue-300 hover:underline-offset-4">{j.title}</button>
+                  </h3>
                   {f.snippet ? (
                     <p className="mt-1.5 text-[15px] leading-relaxed text-slate-600">{f.snippet}</p>
                   ) : (
                     <p className="mt-1.5 text-sm text-slate-500">
-                      This listing only includes the title, location and term. Open <b className="font-medium text-slate-600">About this role</b> for an explanation.
+                      This listing only includes the title, location and term. Open <b className="font-medium text-slate-600">Details &amp; next steps</b> for the key facts and a plain-English explanation.
                     </p>
                   )}
                   <p className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-700">
@@ -423,13 +416,8 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
                     >
                       {tracked ? "✓ Saved · Next steps" : "＋ Save & get next steps"}
                     </button>
-                    <button onClick={() => toggleInfo(j.id)} aria-expanded={infoOpen.has(j.id)} className="btn-secondary">
-                      About this role
-                      <svg className={`transition-transform ${infoOpen.has(j.id) ? "rotate-180" : ""}`} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="m6 9 6 6 6-6" /></svg>
-                    </button>
+                    <button onClick={() => setDetail(j)} className="btn-secondary">Details &amp; next steps →</button>
                   </div>
-
-                  {infoOpen.has(j.id) && <RoleDetails job={j} />}
                 </div>
                 <div className="hidden sm:block">
                   {j.fit ? <ScoreRing score={j.fit.score} /> : <span className="tag tag-soft whitespace-nowrap">Not scored</span>}
@@ -449,6 +437,19 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
       )}
 
       {tailoring && <TailorPanel profile={profile} job={tailoring} onClose={() => setTailoring(null)} />}
+      {detail && !tailoring && (
+        <InternshipDetail
+          job={detail}
+          profile={profile}
+          allJobs={jobs}
+          tracked={trackedIds.has(detail.id)}
+          onSave={(j, plan) => { setDetail(null); onTrack(j, plan); }}
+          onOpenSaved={(id) => { setDetail(null); onOpen(id); }}
+          onTailor={(j) => setTailoring(j)}
+          onOpenJob={setDetail}
+          onClose={() => setDetail(null)}
+        />
+      )}
     </section>
   );
 }

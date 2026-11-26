@@ -127,7 +127,7 @@ export default function Home() {
               , then edit it and download a PDF.
             </p>
           )}
-          {profile && <JobList profile={profile} trackedIds={trackedIds} onTrack={(j) => { tracker.add(j); setOpenId(j.id); }} onOpen={setOpenId} />}
+          {profile && <JobList profile={profile} trackedIds={trackedIds} onTrack={(j, plan) => { tracker.add(j, plan ? { plan } : undefined); setOpenId(j.id); }} onOpen={setOpenId} />}
 
           {!profile && (
             <section>

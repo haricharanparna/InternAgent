@@ -19,15 +19,27 @@ const INTERN_RE = /\b(intern|internship|co-?op)\b/i;
 export const CURRENT_TERM_RE = /202[7-9]|Fall 2026|Winter 2026/;
 export const MAX_AGE_DAYS = 150;
 
-function htmlToText(html: string) {
+// Keeps the posting's shape: headings and paragraphs become their own lines and
+// list items become "• " lines, so the detail view can show real sections.
+export function htmlToText(html: string) {
   return html
     .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&")
     .replace(/&mdash;|&ndash;/g, "–").replace(/&rsquo;|&lsquo;/g, "'").replace(/&[a-z]+;/g, " ")
+    .replace(/<li[^>]*>/gi, "\n• ")
+    .replace(/<br\s*\/?>|<\/(p|div|h[1-6]|ul|ol|li|tr)>|<(h[1-6]|p|div)[^>]*>/gi, "\n")
     .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
+    .replace(/[ \t\r\f\v]+/g, " ")
+    .replace(/ ?\n ?/g, "\n")
+    .replace(/\n•\s*\n/g, "\n• ")
+    .replace(/\n{2,}/g, "\n")
     .trim();
 }
+
+const WORKPLACE: Record<string, Job["workplace"]> = { remote: "Remote", hybrid: "Hybrid", onsite: "On-site", "on-site": "On-site" };
+const workplaceOf = (v?: string) => (v ? WORKPLACE[v.toLowerCase()] : undefined);
+// "8574 Globalization Platform" → "Globalization Platform"
+const teamName = (v?: string) => v?.replace(/^\d+\s+/, "").trim() || undefined;
 
 const titleCase = (slug: string) => slug[0].toUpperCase() + slug.slice(1);
 
@@ -45,68 +57,113 @@ const iso = (v: unknown) => {
 
 type GreenhouseJob = {
   id: number; title: string; absolute_url: string; content: string; first_published?: string; updated_at?: string;
-  location?: { name: string }; company_name?: string;
+  location?: { name: string }; company_name?: string; application_deadline?: string | null;
+  departments?: { name: string }[];
 };
+
+const fromGreenhouseJob = (slug: string, j: GreenhouseJob): Job => ({
+  id: `gh-${slug}-${j.id}`,
+  title: j.title,
+  company: j.company_name || titleCase(slug),
+  location: j.location?.name || "Unknown",
+  url: j.absolute_url,
+  source: "greenhouse",
+  description: htmlToText(j.content || ""),
+  postedAt: iso(j.updated_at || j.first_published),
+  team: teamName(j.departments?.[0]?.name),
+  deadline: iso(j.application_deadline || undefined),
+});
 
 async function fromGreenhouse(slug: string): Promise<Job[]> {
   const data = await getJSON(`https://boards-api.greenhouse.io/v1/boards/${slug}/jobs?content=true`);
-  return (data.jobs as GreenhouseJob[])
-    .filter((j) => INTERN_RE.test(j.title))
-    .map((j) => ({
-      id: `gh-${slug}-${j.id}`,
-      title: j.title,
-      company: j.company_name || titleCase(slug),
-      location: j.location?.name || "Unknown",
-      url: j.absolute_url,
-      source: "greenhouse",
-      description: htmlToText(j.content || ""),
-      postedAt: iso(j.updated_at || j.first_published),
-    }));
+  return (data.jobs as GreenhouseJob[]).filter((j) => INTERN_RE.test(j.title)).map((j) => fromGreenhouseJob(slug, j));
 }
 
 type LeverJob = {
   id: string; text: string; hostedUrl: string; descriptionPlain?: string; createdAt?: number;
-  categories?: { location?: string };
+  categories?: { location?: string; team?: string };
   lists?: { text: string; content: string }[];
+  additionalPlain?: string;
+  workplaceType?: string;
+  salaryRange?: { min?: number; max?: number; currency?: string; interval?: string };
 };
+
+function leverPay(r?: LeverJob["salaryRange"]) {
+  if (!r?.min) return undefined;
+  const per = /hour/i.test(r.interval || "") ? "/hr" : /month/i.test(r.interval || "") ? "/month" : /year|annual/i.test(r.interval || "") ? "/year" : "";
+  const f = (n: number) => `${r.currency && r.currency !== "USD" ? `${r.currency} ` : "$"}${n.toLocaleString("en-US")}`;
+  return r.max && r.max !== r.min ? `${f(r.min)}–${f(r.max)}${per}` : `${f(r.min)}${per}`;
+}
+
+const fromLeverJob = (slug: string, j: LeverJob): Job => ({
+  id: `lv-${slug}-${j.id}`,
+  title: j.text,
+  company: titleCase(slug),
+  location: j.categories?.location || "Unknown",
+  url: j.hostedUrl,
+  source: "lever",
+  postedAt: iso(j.createdAt),
+  description: [
+    j.descriptionPlain || "",
+    ...(j.lists || []).map((l) => `${l.text}\n${htmlToText(l.content)}`),
+    j.additionalPlain || "",
+  ].filter(Boolean).join("\n").replace(/\n{2,}/g, "\n").trim(),
+  team: teamName(j.categories?.team),
+  workplace: workplaceOf(j.workplaceType),
+  compensation: leverPay(j.salaryRange),
+});
 
 async function fromLever(slug: string): Promise<Job[]> {
   const data: LeverJob[] = await getJSON(`https://api.lever.co/v0/postings/${slug}?mode=json`);
-  return data
-    .filter((j) => INTERN_RE.test(j.text))
-    .map((j) => ({
-      id: `lv-${slug}-${j.id}`,
-      title: j.text,
-      company: titleCase(slug),
-      location: j.categories?.location || "Unknown",
-      url: j.hostedUrl,
-      source: "lever",
-      postedAt: iso(j.createdAt),
-      description: [
-        j.descriptionPlain || "",
-        ...(j.lists || []).map((l) => `${l.text}: ${htmlToText(l.content)}`),
-      ].join(" "),
-    }));
+  return data.filter((j) => INTERN_RE.test(j.text)).map((j) => fromLeverJob(slug, j));
 }
 
 type AshbyJob = {
   id: string; title: string; location?: string; isRemote?: boolean; jobUrl: string; descriptionPlain?: string; publishedAt?: string;
+  team?: string; department?: string; workplaceType?: string;
+  compensation?: { compensationTierSummary?: string | null };
 };
 
+const fromAshbyJob = (slug: string, j: AshbyJob): Job => ({
+  id: `ab-${slug}-${j.id}`,
+  title: j.title,
+  company: titleCase(slug),
+  location: j.isRemote ? `${j.location || ""} (Remote)`.trim() : j.location || "Unknown",
+  url: j.jobUrl,
+  source: "ashby",
+  postedAt: iso(j.publishedAt),
+  description: (j.descriptionPlain || "").replace(/\n{2,}/g, "\n").trim(),
+  team: teamName(j.team || j.department),
+  workplace: workplaceOf(j.workplaceType),
+  compensation: j.compensation?.compensationTierSummary || undefined,
+});
+
+const ashbyBoard = (slug: string) => getJSON(`https://api.ashbyhq.com/posting-api/job-board/${slug}?includeCompensation=true`);
+
 async function fromAshby(slug: string): Promise<Job[]> {
-  const data = await getJSON(`https://api.ashbyhq.com/posting-api/job-board/${slug}`);
-  return (data.jobs as AshbyJob[])
-    .filter((j) => INTERN_RE.test(j.title))
-    .map((j) => ({
-      id: `ab-${slug}-${j.id}`,
-      title: j.title,
-      company: titleCase(slug),
-      location: j.isRemote ? `${j.location || ""} (Remote)`.trim() : j.location || "Unknown",
-      url: j.jobUrl,
-      source: "ashby",
-      postedAt: iso(j.publishedAt),
-      description: j.descriptionPlain || "",
-    }));
+  const data = await ashbyBoard(slug);
+  return (data.jobs as AshbyJob[]).filter((j) => INTERN_RE.test(j.title)).map((j) => fromAshbyJob(slug, j));
+}
+
+// Fetches one posting fresh from its own job board, for the detail view: the
+// full text (the list view trims it) and whether it's still open. Returns
+// null when the board no longer lists it. SimplifyJobs listings return
+// undefined, since that list has no per-posting page to check.
+export async function fetchOne(id: string): Promise<Job | null | undefined> {
+  const m = id.match(/^(gh|lv|ab)-([a-z0-9-]+?)-([A-Za-z0-9-]+)$/);
+  if (!m) return undefined;
+  const [, kind, slug, jobId] = m;
+  const known = { gh: GREENHOUSE, lv: LEVER, ab: ASHBY }[kind as "gh" | "lv" | "ab"];
+  if (!known.includes(slug)) return undefined;
+  try {
+    if (kind === "gh") return fromGreenhouseJob(slug, await getJSON(`https://boards-api.greenhouse.io/v1/boards/${slug}/jobs/${jobId}`));
+    if (kind === "lv") return fromLeverJob(slug, await getJSON(`https://api.lever.co/v0/postings/${slug}/${jobId}?mode=json`));
+    const hit = ((await ashbyBoard(slug)).jobs as AshbyJob[]).find((j) => j.id === jobId);
+    return hit ? fromAshbyJob(slug, hit) : null;
+  } catch (e) {
+    if (/^404 /.test((e as Error).message)) return null;
+    throw e;
+  }
 }
 
 type SimplifyJob = {

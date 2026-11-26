@@ -37,7 +37,20 @@ function findPay(text: string) {
   return lo === hi ? `${f(lo)}/hr` : `${f(lo)}–${f(hi)}/hr`;
 }
 
-const TERM_RE = /\b(?:summer|fall|winter|spring)\s+20\d\d\b/i;
+const TERM_RE = /\b(summer|fall|winter|spring)\s+(?:of\s+)?(20\d\d)\b/gi;
+
+// The internship's term ("Summer 2027"). The title wins; in the description a
+// season next to "graduating" is a graduation date, not the term, so skip it.
+function termOf(title: string, description: string) {
+  const fmt = (m: RegExpMatchArray) => `${m[1][0].toUpperCase()}${m[1].slice(1).toLowerCase()} ${m[2]}`;
+  const inTitle = [...title.matchAll(TERM_RE)][0];
+  if (inTitle) return fmt(inTitle);
+  for (const m of description.matchAll(TERM_RE)) {
+    const before = description.slice(Math.max(0, (m.index ?? 0) - 60), m.index);
+    if (!/graduat|degree|class of|expected/i.test(before)) return fmt(m);
+  }
+  return undefined;
+}
 
 function shortPlaces(location: string) {
   const places = location.split(/;\s*/).filter(Boolean);
@@ -70,6 +83,17 @@ function snippetOf(description: string) {
 // Exported so the jobs API can keep pay that sits past its description cut-off.
 export { findPay };
 
+// A rough hourly figure for sorting by pay: "$45–$50/hr" → 45,
+// "$12.5K per month" → 72 (÷ 173 working hours), "$90,000/year" → 43 (÷ 2,080).
+export function hourlyPay(pay?: string) {
+  const m = pay?.match(/\$\s?([\d,]+(?:\.\d+)?)\s?([kK])?/);
+  if (!m) return 0;
+  const n = Number(m[1].replace(/,/g, "")) * (m[2] ? 1000 : 1);
+  if (/month/i.test(pay!)) return Math.round(n / 173);
+  if (/year|annual/i.test(pay!) || n > 1000) return Math.round(n / 2080);
+  return n;
+}
+
 // SimplifyJobs uses a few spellings for the same category; fold them together.
 const CATEGORY_ALIASES: Record<string, string> = {
   "software engineering": "Software",
@@ -93,13 +117,13 @@ export function jobFacts(job: Job): JobFacts {
     domain = /greenhouse\.io|lever\.co|ashbyhq\.com|myworkdayjobs\.com|simplify\.jobs/.test(host) ? "View posting" : host;
   } catch {}
 
-  const workplace = /\bhybrid\b/i.test(all)
+  const workplace = job.workplace || (/\bhybrid\b/i.test(all)
     ? "Hybrid"
     : /\bremote\b/i.test(job.location) || /\bfully remote\b/i.test(d)
       ? "Remote"
       : /\b(on-?site|in-?office|in person)\b/i.test(d)
         ? "On-site"
-        : undefined;
+        : undefined);
 
   return {
     sourceLabel: simplify ? "SimplifyJobs list" : "Company job board",
@@ -107,10 +131,10 @@ export function jobFacts(job: Job): JobFacts {
     // "Term:", "Degrees:" and "Visa sponsorship:" are our own SimplifyJobs fields.
     // Company postings can contain the same words in free text, so read those
     // only for Simplify listings and use a strict season + year match otherwise.
-    term: (simplify && pick(d, "Term")) || all.match(TERM_RE)?.[0],
+    term: (simplify && pick(d, "Term")) || termOf(job.title, d),
     degrees: simplify ? pick(d, "Degrees") : undefined,
     sponsorship: simplify ? d.match(/Visa sponsorship: (.+)\.$/)?.[1]?.trim() : undefined,
-    pay: findPay(d.replace(/&mdash;|&ndash;/g, "–")),
+    pay: job.compensation || findPay(d.replace(/&mdash;|&ndash;/g, "–")),
     workplace,
     where: shortPlaces(job.location),
     snippet: simplify ? undefined : snippetOf(d),

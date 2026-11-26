@@ -19,6 +19,7 @@ const STEPS = [
 
 const API = [
   ["GET", "/api/jobs", "All current internships (CDN-cached for 1 hour)"],
+  ["GET", "/api/job?id=", "1 posting, fresh from its board: full text + still open?"],
   ["GET", "/api/stats", "Aggregate counts used on these pages"],
   ["GET", "/api/health", "Status check; doesn't use AI quota"],
   ["POST", "/api/parse-resume", "PDF (≤ 5 MB) → profile JSON"],
@@ -182,6 +183,25 @@ export default function HowItWorks({ profile }: { profile: Profile | null }) {
           Company boards are loaded first, so when the same job appears on both, the version with the full description wins.
           The result is cached for {p?.cacheMinutes ?? 60} minutes on the server and at Vercel&apos;s CDN
           {p?.ms ? `; the last full refresh took ${(p.ms / 1000).toFixed(1)} s` : ""}.
+        </P>
+        <P>
+          <b>Internship details.</b> Clicking an internship fetches that one posting again from the company&apos;s own board, so you
+          see the full text and whether it&apos;s still listed. The key facts are read with plain pattern matching, no AI, and each
+          one keeps the sentence it came from:
+        </P>
+        <Formula>
+          pay: &quot;$45/hr&quot;, &quot;$54 – $60 USD&quot;, or the board&apos;s own pay field · dates: &quot;June 8 to August 28, 2027&quot; · length: &quot;12-week&quot;, &quot;6-month&quot;
+          <br />
+          who can apply: degree level in the same sentence as &quot;pursuing / enrolled in&quot; + &quot;graduating … 2027&quot;
+          <br />
+          visa: &quot;unable to sponsor&quot;, &quot;without sponsorship&quot; → not offered · &quot;will sponsor&quot; → offered
+          <br />
+          term: the title first; a season next to &quot;graduating&quot; is a graduation date, not the term
+        </Formula>
+        <P>
+          The next-steps plan for an internship you haven&apos;t saved yet uses the same rules as a saved one. A step&apos;s timing may
+          only name a date the server gave the AI (today, your deadline, your interview) or one the posting states; anything else
+          becomes &quot;Soon&quot;.
         </P>
       </Section>
 

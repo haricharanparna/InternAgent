@@ -35,6 +35,16 @@ const STAGE_GOAL: Record<Opportunity["status"], string> = {
 };
 
 const DAY = 86_400_000;
+
+// Date guard: a step's timing may only name a date the server gave the AI
+// (today, the deadline, the interview, the follow-up day). "Before December 1"
+// with no such deadline becomes "Soon".
+const DATE_IN_TEXT = /\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s\d{1,2}\b/g;
+function datedOnlyFromFacts(when: string, factText: string) {
+  const w = String(when || "").slice(0, 60);
+  const dates = w.match(DATE_IN_TEXT) || [];
+  return dates.every((d) => factText.includes(d)) ? w : "Soon";
+}
 const fmt = (d: Date) => d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 
 export async function POST(req: Request) {
@@ -67,6 +77,9 @@ export async function POST(req: Request) {
     // Skills that never show up in an experience are "listed", not "experience".
     const onlyListed = listedOnly(profile);
 
+    // Dates the AI may use in a step's timing: ours, plus any the posting states.
+    const factText = `${facts.join(" ")} ${o.description || ""}`;
+
     const prompt = `You are a practical internship coach. Write the next steps for ONE specific internship the student chose.
 
 INTERNSHIP: ${o.title} at ${o.company} (${o.location})
@@ -93,7 +106,11 @@ Rules:
     const out = await generateJSON<Omit<NextStepsPlan, "status" | "generatedAt">>([{ text: prompt }], SCHEMA);
     const plan: NextStepsPlan = {
       headline: softenListedSkills(out.headline || "", onlyListed),
-      steps: (out.steps || []).slice(0, 6).map((s) => ({ ...s, title: softenListedSkills(s.title, onlyListed), detail: softenListedSkills(s.detail, onlyListed) })),
+      steps: (out.steps || []).slice(0, 6).map((s) => ({
+        title: softenListedSkills(s.title, onlyListed),
+        detail: softenListedSkills(s.detail, onlyListed),
+        when: datedOnlyFromFacts(s.when, factText),
+      })),
       prep: (out.prep || []).slice(0, 5).map((p) => softenListedSkills(p, onlyListed)),
       suggestedEmail: out.suggestedEmail,
       status: o.status,
