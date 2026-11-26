@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Profile } from "@/lib/types";
 import { fmt, useStats } from "@/lib/useStats";
+import { apiFetch, readJSON } from "@/lib/api";
 
 const SAMPLE_SKILLS = ["Python", "JavaScript", "React", "SQL", "Git", "pandas"];
 const SAMPLE_POSTING =
@@ -99,7 +100,7 @@ export default function HowItWorks({ profile }: { profile: Profile | null }) {
   const { stats } = useStats();
   const [models, setModels] = useState<string[]>([]);
   useEffect(() => {
-    fetch("/api/health").then((r) => r.json()).then((d) => setModels(d.models || [])).catch(() => {});
+    apiFetch("/api/health").then((r) => readJSON(r)).then((d) => setModels(d.models || [])).catch(() => {});
   }, []);
   const p = stats?.pipeline;
   const boardCount = p ? p.boards.greenhouse + p.boards.lever + p.boards.ashby : null;

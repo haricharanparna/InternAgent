@@ -14,6 +14,7 @@ import { ReadinessCard } from "./ReadinessCard";
 import { CompanyResearch, InterviewDay, ResumeUsed } from "./ApplyKit";
 import { printPacket } from "@/lib/packet";
 import { useStored } from "@/lib/prefs";
+import { apiFetch, readJSON } from "@/lib/api";
 
 type Props = {
   app: TrackedApp;
@@ -41,8 +42,8 @@ const appAsJob = (a: TrackedApp): ScoredJob => ({
 });
 
 const post = async <T,>(url: string, body: unknown): Promise<T> => {
-  const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-  const data = await res.json();
+  const res = await apiFetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const data = await readJSON(res);
   if (!res.ok) throw new Error(data.error || "Something went wrong.");
   return data;
 };

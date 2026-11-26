@@ -7,6 +7,7 @@ import { useRef, useState } from "react";
 import { LogoMark } from "./Logo";
 import type { Profile } from "@/lib/types";
 import { bumpUsage } from "@/lib/usage";
+import { apiFetch, readJSON } from "@/lib/api";
 
 type Props = {
   profile: Profile | null;
@@ -38,8 +39,8 @@ export default function ResumeUpload({ profile, onProfile }: Props) {
     try {
       const body = new FormData();
       body.append("resume", file);
-      const res = await fetch("/api/parse-resume", { method: "POST", body });
-      const data = await res.json();
+      const res = await apiFetch("/api/parse-resume", { method: "POST", body });
+      const data = await readJSON(res);
       if (!res.ok) throw new Error(data.error || "Could not read resume.");
       bumpUsage("resumesRead");
       onProfile(data.profile);

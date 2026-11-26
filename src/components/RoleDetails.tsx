@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { isRemote } from "@/lib/location";
 import type { Job, RoleInfo } from "@/lib/types";
 import { bumpUsage } from "@/lib/usage";
+import { apiFetch, readJSON } from "@/lib/api";
 
 // Survives closing/reopening a card, so each role is only explained once per visit.
 const cache = new Map<string, RoleInfo>();
@@ -50,12 +51,12 @@ export default function RoleDetails({ job }: { job: Job }) {
     setError("");
     (async () => {
       try {
-        const res = await fetch("/api/explain", {
+        const res = await apiFetch("/api/explain", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ job }),
         });
-        const data = await res.json();
+        const data = await readJSON(res);
         if (!res.ok) throw new Error(data.error);
         cache.set(job.id, data.info);
         bumpUsage("rolesExplained");

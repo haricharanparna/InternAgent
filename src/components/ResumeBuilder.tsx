@@ -5,6 +5,7 @@ import type { BuilderAnswers, BuilderExperience, BuiltResume, ExperienceKind, Pr
 import { builtResumeText, printBuiltResume } from "@/lib/resumePdf";
 import { builtResumeParas, downloadDocx } from "@/lib/docx";
 import { bumpUsage } from "@/lib/usage";
+import { apiFetch, readJSON } from "@/lib/api";
 
 // Resume builder: asks a few plain questions, has the AI turn the answers
 // into a resume, then lets the student edit every line before downloading.
@@ -120,8 +121,8 @@ export default function ResumeBuilder({ profile, onUseProfile }: Props) {
     if (missing) { setError(missing); setStep(0); return; }
     setBusy(true); setError("");
     try {
-      const res = await fetch("/api/build-resume", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ answers }) });
-      const data = await res.json();
+      const res = await apiFetch("/api/build-resume", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ answers }) });
+      const data = await readJSON(res);
       if (!res.ok) throw new Error(data.error || "Could not build the resume.");
       setResume(data.resume);
       bumpUsage("resumesBuilt");
@@ -471,12 +472,12 @@ function BulletRow({ n, value, exp, target, onChange, onDelete }: {
   async function improve() {
     setBusy(true); setError(""); setIdeas(null);
     try {
-      const res = await fetch("/api/improve-bullet", {
+      const res = await apiFetch("/api/improve-bullet", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ bullet: value, title: exp.title, organization: exp.organization, siblings: exp.bullets.filter((b) => b !== value), target }),
       });
-      const data = await res.json();
+      const data = await readJSON(res);
       if (!res.ok) throw new Error(data.error || "Could not get ideas.");
       setIdeas(data);
     } catch (e) {

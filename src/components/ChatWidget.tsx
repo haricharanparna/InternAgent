@@ -2,6 +2,7 @@
 
 import { Fragment, useEffect, useRef, useState } from "react";
 import { LogoMark } from "./Logo";
+import { apiFetch, readJSON } from "@/lib/api";
 
 type Message = { role: "user" | "model"; text: string };
 
@@ -83,12 +84,12 @@ export default function ChatWidget() {
     try {
       let profile = null;
       try { profile = JSON.parse(localStorage.getItem("internagent.profile") || "null"); } catch {}
-      const res = await fetch("/api/chat", {
+      const res = await apiFetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: next, profile }),
       });
-      const data = await res.json();
+      const data = await readJSON(res);
       setMessages([...next, { role: "model", text: res.ok ? data.reply : `⚠️ ${data.error || "Something went wrong."}` }]);
     } catch {
       setMessages([...next, { role: "model", text: "⚠️ Couldn't reach the assistant. Check your connection." }]);

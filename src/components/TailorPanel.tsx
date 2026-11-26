@@ -8,6 +8,7 @@ import { bumpUsage } from "@/lib/usage";
 import { markReady } from "@/lib/readiness";
 import { saveVersion } from "@/lib/resumeVersions";
 import type { Job, Profile, TailoredResume } from "@/lib/types";
+import { apiFetch, readJSON } from "@/lib/api";
 
 type Props = { profile: Profile; job: Job; onClose: () => void };
 
@@ -21,12 +22,12 @@ export default function TailorPanel({ profile, job, onClose }: Props) {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch("/api/tailor", {
+        const res = await apiFetch("/api/tailor", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ profile, job }),
         });
-        const data = await res.json();
+        const data = await readJSON(res);
         if (!res.ok) throw new Error(data.error);
         if (cancelled) return; // a cancelled run (closed panel, or React's dev double-run) records nothing
         bumpUsage("resumesTailored");

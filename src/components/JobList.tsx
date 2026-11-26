@@ -16,6 +16,7 @@ import { bumpUsage } from "@/lib/usage";
 import { keywordMatch } from "@/lib/keywords";
 import { PLACE_KEY, isNear, isRemote, locateMe, placeLabel, type Place } from "@/lib/location";
 import type { Fit, Job, NextStepsPlan, Profile, ScoredJob } from "@/lib/types";
+import { apiFetch, readJSON } from "@/lib/api";
 
 const PAGE = 25;
 const SEEN_KEY = "internagent.seenJobs";
@@ -151,8 +152,8 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
     setError("");
     setLoading("jobs");
     try {
-      const res = await fetch("/api/jobs");
-      const data = await res.json();
+      const res = await apiFetch("/api/jobs");
+      const data = await readJSON(res);
       if (!res.ok) throw new Error(data.error);
       const ranked = (data.jobs as Job[])
         .map((j) => ({ job: j, k: keywordScore(j, terms) }))
@@ -265,12 +266,12 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
     setLoading("score");
     try {
       const unscored = visible.filter((j) => !j.fit);
-      const res = await fetch("/api/score", {
+      const res = await apiFetch("/api/score", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ profile, jobs: unscored }),
       });
-      const data = await res.json();
+      const data = await readJSON(res);
       if (!res.ok) throw new Error(data.error);
       const byId = new Map((data.fits as Fit[]).map((f) => [f.id, f]));
       bumpUsage("postingsScored", byId.size);

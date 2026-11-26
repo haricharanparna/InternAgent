@@ -5,6 +5,7 @@ import { toOpportunity, type TrackedApp } from "@/lib/tracker";
 import type { AnswerFeedback, InterviewQuestion, Profile } from "@/lib/types";
 import { bumpUsage } from "@/lib/usage";
 import { useStored } from "@/lib/prefs";
+import { apiFetch, readJSON } from "@/lib/api";
 
 // Practice interview: likely questions for this posting, a place to answer
 // (typed or spoken), and honest STAR feedback on each answer.
@@ -17,8 +18,8 @@ const KIND_LABEL: Record<InterviewQuestion["kind"], string> = {
 };
 
 const post = async <T,>(body: unknown): Promise<T> => {
-  const res = await fetch("/api/interview", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-  const data = await res.json();
+  const res = await apiFetch("/api/interview", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const data = await readJSON(res);
   if (!res.ok) throw new Error(data.error || "Something went wrong.");
   return data;
 };

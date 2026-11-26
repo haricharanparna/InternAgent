@@ -13,6 +13,7 @@ import { similarJobs } from "@/lib/similar";
 import { PriorityBreakdown, ReadinessCard } from "./ReadinessCard";
 import { KEYS, useStored, type Report } from "@/lib/prefs";
 import { EMAIL_TYPES, type NextStepsPlan, type Profile, type ScoredJob } from "@/lib/types";
+import { apiFetch, readJSON } from "@/lib/api";
 
 type Props = {
   job: ScoredJob;
@@ -78,8 +79,8 @@ export default function InternshipDetail({ job: listed, profile, allJobs, tracke
     if (listed.source === "simplify" || listed.custom) { setLive({ status: "unknown" }); return; }
     let cancelled = false;
     setLive({ status: "loading" });
-    fetch(`/api/job?id=${encodeURIComponent(listed.id)}`)
-      .then((r) => r.json())
+    apiFetch(`/api/job?id=${encodeURIComponent(listed.id)}`)
+      .then((r) => readJSON(r))
       .then((d) => {
         if (cancelled) return;
         if (d.status === "open" && d.job) setJob({ ...listed, ...d.job, fit: listed.fit });
@@ -362,7 +363,7 @@ function PreviewSteps({ job, profile, deadline, matched, missing, onSave }: {
     let cancelled = false;
     setPlan(null);
     setError("");
-    fetch("/api/next-steps", {
+    apiFetch("/api/next-steps", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -370,7 +371,7 @@ function PreviewSteps({ job, profile, deadline, matched, missing, onSave }: {
         opportunity: { title: job.title, company: job.company, location: job.location, url: job.url, description: job.description, status: "saved", matched, missing, deadline },
       }),
     })
-      .then(async (r) => { const d = await r.json(); if (!r.ok) throw new Error(d.error || "Couldn't write next steps."); return d.plan as NextStepsPlan; })
+      .then(async (r) => { const d = await readJSON(r); if (!r.ok) throw new Error(d.error || "Couldn't write next steps."); return d.plan as NextStepsPlan; })
       .then((p) => {
         if (cancelled) return;
         const withDone = { ...p, done: [] };
