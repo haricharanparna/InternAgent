@@ -67,6 +67,14 @@ export default function InterviewPrep({ app, profile, onUpdate }: Props) {
   const avg = answered ? (Object.values(prep.feedback).reduce((n, f) => n + f.score, 0) / answered).toFixed(1) : null;
   const toggleHard = (i: number) => onUpdate(app.id, { prep: { ...prep, hard: hard.includes(i) ? hard.filter((x) => x !== i) : [...hard, i] } });
   const order = onlyHard ? prep.questions.map((_, i) => i).filter((i) => hard.includes(i)) : prep.questions.map((_, i) => i);
+  // Like a real interview: jump to a question you didn't choose. Hard ones first, then unpracticed.
+  const goTo = (i: number) => { setOpen(i); setTimeout(() => document.getElementById(`iq-${app.id}-${i}`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 50); };
+  const randomQ = () => {
+    const all = prep.questions.map((_, i) => i).filter((i) => i !== open);
+    const pool = [all.filter((i) => hard.includes(i)), all.filter((i) => !prep.feedback[i]), all].find((p) => p.length) || [];
+    if (pool.length) goTo(pool[Math.floor(Math.random() * pool.length)]);
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -76,6 +84,7 @@ export default function InterviewPrep({ app, profile, onUpdate }: Props) {
         {hard.length > 0 && (
           <label className="flex items-center gap-1.5 text-sm text-slate-700"><input type="checkbox" checked={onlyHard} onChange={(e) => setOnlyHard(e.target.checked)} className="h-4 w-4 accent-blue-600" /> Only my hard ones ({hard.length})</label>
         )}
+        <button onClick={randomQ} className="btn-secondary px-3 py-1.5 text-sm" title="Hard ones first, then ones you haven't practiced">🎲 Random question</button>
         <button onClick={() => { if (confirm("Replace these questions and your practice answers?")) load(); }} disabled={busy} className="text-sm text-slate-500 underline underline-offset-2 hover:text-slate-800">
           {busy ? "Writing…" : "↻ New questions"}
         </button>
@@ -83,7 +92,7 @@ export default function InterviewPrep({ app, profile, onUpdate }: Props) {
       {error && <p className="text-sm text-red-600">{error}</p>}
       <ol className="space-y-2">
         {order.map((i) => { const q = prep.questions[i]; return (
-          <li key={i} className="rounded-md border border-slate-200">
+          <li key={i} id={`iq-${app.id}-${i}`} className="scroll-mt-4 rounded-md border border-slate-200">
             <button onClick={() => setOpen(open === i ? null : i)} aria-expanded={open === i} className="flex w-full items-start gap-3 p-3 text-left">
               <span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${prep.feedback[i] ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-700"}`}>
                 {prep.feedback[i] ? "✓" : i + 1}
@@ -96,6 +105,7 @@ export default function InterviewPrep({ app, profile, onUpdate }: Props) {
             </button>
             <div className="-mt-2 px-3 pb-2 pl-12">
               <button onClick={() => toggleHard(i)} aria-pressed={hard.includes(i)} className={`text-xs underline underline-offset-2 ${hard.includes(i) ? "text-amber-700" : "text-slate-500"}`}>{hard.includes(i) ? "★ Marked hard: practice again" : "☆ Mark as hard"}</button>
+              {open === i && order.indexOf(i) < order.length - 1 && <button onClick={() => goTo(order[order.indexOf(i) + 1])} className="ml-3 text-xs text-blue-700 underline underline-offset-2">Next question →</button>}
             </div>
             {open === i && (
               <Practice
@@ -222,6 +232,7 @@ function Practice({ q, answer, feedback, onAnswer, onFeedback, getFeedback, rese
             {listening ? "■ Stop recording" : "🎙 Answer out loud"}
           </button>
         )}
+        <AnswerTimer />
         <span className={`text-xs ${seconds > 150 ? "text-amber-700" : "text-slate-500"}`}>
           {words} words · about {seconds < 60 ? `${seconds} s` : `${Math.floor(seconds / 60)} min ${seconds % 60} s`} spoken{seconds > 150 ? " (a bit long; aim for under 2 minutes)" : ""}
         </span>
@@ -263,5 +274,23 @@ function FeedbackView({ fb, onUse }: { fb: AnswerFeedback; onUse: (t: string) =>
         <p className="mt-1 text-xs text-slate-500">Anything in [brackets] is something only you know. Fill it in, then practice saying it out loud.</p>
       </div>
     </div>
+  );
+}
+
+// A 2-minute countdown, so practice feels like the real thing.
+function AnswerTimer() {
+  const [left, setLeft] = useState<number | null>(null);
+  useEffect(() => {
+    if (left === null || left <= 0) return;
+    const t = setTimeout(() => setLeft((l) => (l === null ? null : l - 1)), 1000);
+    return () => clearTimeout(t);
+  }, [left]);
+  if (left === null) return <button onClick={() => setLeft(120)} className="btn-secondary px-3 py-1.5 text-sm">⏱ 2-min timer</button>;
+  const mm = Math.floor(left / 60), ss = String(left % 60).padStart(2, "0");
+  return (
+    <span className="inline-flex items-center gap-2 text-sm">
+      <span role="timer" aria-live={left <= 10 ? "assertive" : "off"} className={`tabular-nums font-semibold ${left === 0 ? "text-rose-700" : left <= 20 ? "text-amber-700" : "text-slate-900"}`}>{left === 0 ? "Time's up: wrap up with the result" : `${mm}:${ss}`}</span>
+      <button onClick={() => setLeft(null)} className="text-xs text-slate-500 underline underline-offset-2">{left === 0 ? "Reset" : "Stop"}</button>
+    </span>
   );
 }

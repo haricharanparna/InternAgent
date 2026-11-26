@@ -1,7 +1,7 @@
 // Offer comparison and duplicate checks: plain math on what the student enters.
 
 export type OfferRatings = { learning: number; team: number; location: number; future: number };
-export type OfferDetails = { pay?: number; start?: string; decideBy?: string; ratings?: Partial<OfferRatings> };
+export type OfferDetails = { pay?: number; start?: string; decideBy?: string; ratings?: Partial<OfferRatings>; acceptedAt?: string };
 
 export const RATING_LABELS: Record<keyof OfferRatings, string> = {
   learning: "What you'd learn",

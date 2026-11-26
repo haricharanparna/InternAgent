@@ -14,6 +14,8 @@ import OpportunityPanel from "@/components/OpportunityPanel";
 import SkillGaps from "@/components/SkillGaps";
 import Onboarding from "@/components/Onboarding";
 import StorageWarning from "@/components/StorageWarning";
+import { sameJob } from "@/lib/offers";
+import Shortcuts from "@/components/Shortcuts";
 import Notifications from "@/components/Notifications";
 import ResumeBuilder from "@/components/ResumeBuilder";
 import { followUpDue, useTracker } from "@/lib/tracker";
@@ -134,7 +136,12 @@ export default function Home() {
               , then edit it and download a PDF.
             </p>
           )}
-          {profile && <JobList profile={profile} trackedIds={trackedIds} onTrack={(j, plan) => { tracker.add(j, plan ? { plan } : undefined); setOpenId(j.id); }} onOpen={setOpenId} />}
+          {profile && <JobList profile={profile} trackedIds={trackedIds} onTrack={(j, plan) => {
+            // Already saved under another listing (same link, or same company and role)? Open that one instead.
+            const existing = tracker.apps.find((a) => a.id === j.id || sameJob(a, j));
+            if (existing) { setOpenId(existing.id); return; }
+            tracker.add(j, plan ? { plan } : undefined); setOpenId(j.id);
+          }} onOpen={setOpenId} />}
 
           {!profile && (
             <section>
@@ -171,6 +178,7 @@ export default function Home() {
       </main>
       {openApp && <OpportunityPanel app={openApp} profile={profile} onUpdate={tracker.update} onClose={() => setOpenId(null)} />}
       <StorageWarning />
+      <Shortcuts />
       <ChatWidget />
     </>
   );

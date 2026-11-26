@@ -45,6 +45,8 @@ export const KEYS = {
   watchNew: "internagent.watchNew",
   hours: "internagent.learningHours",
   onboarded: "internagent.onboarded",
+  recent: "internagent.recentSearches",
+  searchNew: "internagent.searchNew",
 } as const;
 
 export type SavedSearch = {

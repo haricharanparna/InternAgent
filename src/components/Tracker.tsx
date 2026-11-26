@@ -474,7 +474,11 @@ function Pipeline({ apps }: { apps: TrackedApp[] }) {
 // 1–5 ratings. Plain math, shown in full, so the decision stays yours.
 function Offers({ apps, onUpdate }: { apps: TrackedApp[]; onUpdate: (id: string, p: Partial<TrackedApp>) => void }) {
   const offers = apps.filter((a) => a.status === "offer");
+  const [askWithdraw, setAskWithdraw] = useState<string | null>(null);
   if (!offers.length) return null;
+  const accepted = offers.find((a) => a.offer?.acceptedAt);
+  // Once you accept, other applications still in progress can be withdrawn together.
+  const stillOpen = (keep: string) => apps.filter((a) => a.id !== keep && ["saved", "applied", "assessment", "interview", "offer"].includes(a.status));
   const postedPay = (a: TrackedApp) => {
     const pay = postingFacts({ id: a.id, title: a.title, company: a.company, location: a.location, url: a.url, source: "greenhouse", description: a.description || "" }).find((f) => f.key === "pay")?.value;
     return pay ? Math.round(hourlyPay(pay)) || undefined : undefined;
@@ -534,6 +538,25 @@ function Offers({ apps, onUpdate }: { apps: TrackedApp[]; onUpdate: (id: string,
           </tbody>
         </table>
       </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {offers.map((a) => (a.offer?.acceptedAt
+          ? <span key={a.id} className="tag bg-emerald-100 text-emerald-800">✓ Accepted {a.company} on {new Date(a.offer.acceptedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+          : !accepted && <button key={a.id} onClick={() => { set(a, { acceptedAt: new Date().toISOString() }); setAskWithdraw(a.id); }} className="btn-secondary px-3 py-1.5 text-sm">I accepted {a.company}</button>))}
+        {accepted && <button onClick={() => set(accepted, { acceptedAt: undefined })} className="text-xs text-slate-500 underline underline-offset-2">Undo accept</button>}
+      </div>
+      {askWithdraw && stillOpen(askWithdraw).length > 0 && (() => {
+        const others = stillOpen(askWithdraw);
+        const company = apps.find((a) => a.id === askWithdraw)?.company;
+        return (
+          <div role="status" className="mt-3 rounded-md border border-slate-300 bg-surface p-3 text-sm">
+            <p className="text-slate-800">Congratulations on {company}! You have <b>{others.length}</b> other application{others.length === 1 ? "" : "s"} still open: {others.map((a) => a.company).join(", ")}. Withdrawing frees those spots for other students and keeps your board current. Send a short decline or withdrawal email to each (Emails tab, &quot;Decline offer&quot;).</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button onClick={() => { others.forEach((a) => onUpdate(a.id, { status: "withdrawn", notes: `${a.notes ? a.notes + "\n" : ""}Withdrew after accepting ${company}.` })); setAskWithdraw(null); }} className="btn-primary px-3 py-1.5">Mark {others.length} as withdrawn</button>
+              <button onClick={() => setAskWithdraw(null)} className="btn-secondary px-3 py-1.5">Not now</button>
+            </div>
+          </div>
+        );
+      })()}
       <p className="mt-2 text-xs text-slate-500">Pay is read from the posting where it was listed; correct it to match your offer letter. A score is a way to think it through, not an answer. Write the accept or decline email from each offer&apos;s Next steps.</p>
     </section>
   );

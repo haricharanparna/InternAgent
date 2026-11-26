@@ -74,6 +74,8 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
   const [searches, setSearches] = useStored<SavedSearch[]>(KEYS.searches, []);
   const [watch, setWatch] = useStored<string[]>(KEYS.watch, []);
   const searchBox = useRef<HTMLInputElement>(null);
+  const [recent, setRecent] = useStored<string[]>(KEYS.recent, []);
+  const remember = (q: string) => { const t = q.trim(); if (t.length >= 3) setRecent((r) => [t, ...r.filter((x) => x.toLowerCase() !== t.toLowerCase())].slice(0, 6)); };
 
   // "/" jumps to the search box (like many sites), unless you're typing or a window is open.
   useEffect(() => {
@@ -232,6 +234,14 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searches, jobs, newIds, hidden, facts, weeksOf, priorities, place]);
 
+  // Tell the bell which saved searches have new matches (once per search load).
+  useEffect(() => {
+    if (!newIds.size) return;
+    const at = new Date().toISOString().slice(0, 10);
+    const hits = searches.map((s) => ({ name: s.name, count: newBySearch.get(s.id) || 0, at })).filter((h) => h.count > 0);
+    try { localStorage.setItem(KEYS.searchNew, JSON.stringify(hits)); window.dispatchEvent(new CustomEvent("internagent:prefs", { detail: KEYS.searchNew })); } catch {}
+  }, [newBySearch, newIds, searches]);
+
   const visible = useMemo(() => {
     const keep = makeFilter({ query, category, where, paidOnly, sponsorOnly, length, eligibleOnly });
     const list = jobs.filter((j) => {
@@ -318,7 +328,8 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
             ref={searchBox}
             value={query}
             onChange={(e) => { setQuery(e.target.value); setShown(PAGE); }}
-            onKeyDown={(e) => { if (e.key === "Escape" && query) { e.stopPropagation(); setQuery(""); setShown(PAGE); } }}
+            onBlur={() => remember(query)}
+            onKeyDown={(e) => { if (e.key === "Enter") remember(query); if (e.key === "Escape" && query) { e.stopPropagation(); setQuery(""); setShown(PAGE); } }}
             aria-label="Search internships (press / to jump here)"
             aria-keyshortcuts="/"
             placeholder={'Try "remote AI internships paying $20/hr" or a company or city'}
@@ -326,6 +337,13 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
             className="w-full rounded-md border border-slate-300 bg-surface py-2 pl-9 pr-3 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
           />
         </div>
+        {!query.trim() && recent.length > 0 && (
+          <p className="order-last flex basis-full flex-wrap items-center gap-1.5 text-xs text-slate-500">
+            Recent:
+            {recent.map((r) => <button key={r} onClick={() => { setQuery(r); setShown(PAGE); }} className="rounded-md border border-slate-200 px-2 py-0.5 text-slate-700 hover:border-slate-400">{r}</button>)}
+            <button onClick={() => setRecent([])} className="underline underline-offset-2">Clear</button>
+          </p>
+        )}
         {query.trim() && (
           <p id="search-understood" className="order-last basis-full text-xs text-slate-500">
             Understood as: {parseSearch(query).chips.map((c) => <span key={c} className="tag tag-soft mr-1">{c}</span>)}

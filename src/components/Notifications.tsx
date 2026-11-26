@@ -13,8 +13,9 @@ const fmtDay = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day:
 // Built from your own applications in this browser: follow-ups, interviews,
 // deadlines, assessments and new internships. Read state is saved locally.
 export type WatchHit = { company: string; count: number; at: string };
+export type SearchHit = { name: string; count: number; at: string };
 
-export function notificationsFor(apps: TrackedApp[], newCount: { count: number; at: string } | null, now = Date.now(), watchNew: WatchHit[] = []): Item[] {
+export function notificationsFor(apps: TrackedApp[], newCount: { count: number; at: string } | null, now = Date.now(), watchNew: WatchHit[] = [], searchNew: SearchHit[] = []): Item[] {
   const out: Item[] = [];
   for (const a of apps) {
     const who = `${a.title} at ${a.company}`;
@@ -46,6 +47,7 @@ export function notificationsFor(apps: TrackedApp[], newCount: { count: number; 
     }
     if (a.status === "assessment") out.push({ key: `asm:${a.id}`, icon: "🧩", text: `Finish the assessment for ${who}.`, when: "Before it's due", open: a.id });
   }
+  for (const s of searchNew) out.push({ key: `search:${s.name}:${s.at}:${s.count}`, icon: "🔎", text: `Your saved search ${s.name} has ${s.count} new internship${s.count === 1 ? "" : "s"}.`, when: fmtDay(new Date(s.at)), search: true });
   for (const w of watchNew) out.push({ key: `watch:${w.company}:${w.at}`, icon: "★", text: `${w.company} posted ${w.count} new internship${w.count === 1 ? "" : "s"}. You're watching this company.`, when: fmtDay(new Date(w.at)), search: true });
   if (newCount && newCount.count > 0) out.push({ key: `new:${newCount.at}`, icon: "✨", text: `${newCount.count} new internship${newCount.count === 1 ? "" : "s"} since your last search.`, when: fmtDay(new Date(newCount.at)), search: true });
   return out.sort((x, y) => Number(!!y.urgent) - Number(!!x.urgent));
@@ -55,9 +57,10 @@ export default function Notifications({ apps, onOpen, onSearch }: { apps: Tracke
   const [read, setRead] = useStored<string[]>(KEYS.read, []);
   const [newCount] = useStored<{ count: number; at: string } | null>(KEYS.newCount, null);
   const [watchNew] = useStored<WatchHit[]>(KEYS.watchNew, []);
+  const [searchNew] = useStored<SearchHit[]>(KEYS.searchNew, []);
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
-  const items = useMemo(() => notificationsFor(apps, newCount, Date.now(), watchNew), [apps, newCount, watchNew]);
+  const items = useMemo(() => notificationsFor(apps, newCount, Date.now(), watchNew, searchNew), [apps, newCount, watchNew, searchNew]);
   const unread = items.filter((i) => !read.includes(i.key));
 
   useEffect(() => {

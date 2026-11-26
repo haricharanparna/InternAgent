@@ -249,6 +249,23 @@ function EmailWriter({ app, profile, type, setType, initialRecipient = "", onUpd
   const [notes] = useStored<Record<string, string[]>>("internagent.research", {});
   const research = (notes[app.company] || []).filter((n) => n?.trim());
   const [useResearch, setUseResearch] = useState(true);
+  // Cover letters written for your other applications, to start from instead of from scratch.
+  const [earlier, setEarlier] = useState<{ app: TrackedApp; draft: { subject: string; body: string } }[]>([]);
+  const [reused, setReused] = useState("");
+  useEffect(() => {
+    try {
+      const all: TrackedApp[] = JSON.parse(localStorage.getItem("internagent.tracker") || "[]");
+      setEarlier(all.filter((a) => a.id !== app.id).flatMap((a) => (a.drafts || []).filter((d) => d.type === "cover_letter").slice(0, 1).map((d) => ({ app: a, draft: d }))));
+    } catch {}
+  }, [app.id]);
+  const reuse = (i: number) => {
+    const e = earlier[i];
+    if (!e) return;
+    const swap = (t: string) => t.split(e.app.company).join(app.company).split(e.app.title).join(app.title);
+    const d: EmailDraft = { subject: swap(e.draft.subject), body: swap(e.draft.body), tips: [] };
+    const id = Date.now().toString(36);
+    setDraftId(id); keep(d, id, "cover_letter"); setDraft(d); setReused(e.app.company);
+  };
   const drafts = app.drafts || [];
   // Keep every draft with the application, so closing the panel loses nothing.
   const keep = (d: EmailDraft, id: string, t: EmailType) => {
@@ -258,8 +275,11 @@ function EmailWriter({ app, profile, type, setType, initialRecipient = "", onUpd
   };
   const [recipient, setRecipient] = useState(initialRecipient);
   const [extra, setExtra] = useState("");
-  const [tone, setTone] = useState<"formal" | "conversational" | "enthusiastic">("formal");
-  const [length, setLength] = useState<"standard" | "short">("standard");
+  // Tone and length are remembered for next time.
+  const [style, setStyle] = useStored<{ tone: "formal" | "conversational" | "enthusiastic"; length: "standard" | "short" }>("internagent.emailStyle", { tone: "formal", length: "standard" });
+  const { tone, length } = style;
+  const setTone = (t: typeof tone) => setStyle((s) => ({ ...s, tone: t }));
+  const setLength = (l: typeof length) => setStyle((s) => ({ ...s, length: l }));
   const [draft, setDraft] = useState<EmailDraft | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -308,7 +328,7 @@ function EmailWriter({ app, profile, type, setType, initialRecipient = "", onUpd
               key={t.id}
               role="radio"
               aria-checked={type === t.id}
-              onClick={() => { setType(t.id); setDraft(null); setDraftId(""); }}
+              onClick={() => { setType(t.id); setDraft(null); setDraftId(""); setReused(""); }}
               className={`rounded-md border px-3 py-1.5 text-sm transition ${type === t.id ? "border-blue-600 bg-blue-600 text-white" : "border-slate-300 bg-surface text-slate-700 hover:border-slate-400"}`}
             >
               {t.label}
@@ -364,6 +384,17 @@ function EmailWriter({ app, profile, type, setType, initialRecipient = "", onUpd
       ) : (
         <p className="text-xs text-slate-500">Tip: answer a few research questions in Next steps, and the letter can say why {app.company} specifically.</p>
       )}
+
+      {type === "cover_letter" && earlier.length > 0 && (
+        <label className="flex flex-wrap items-center gap-2 text-sm text-slate-700">
+          Or start from a letter you wrote for
+          <select value="" onChange={(e) => e.target.value !== "" && reuse(Number(e.target.value))} className="rounded-md border border-slate-300 bg-surface px-2 py-1 text-sm">
+            <option value="">Choose…</option>
+            {earlier.map((e, i) => <option key={e.app.id} value={i}>{e.app.company}: {e.app.title}</option>)}
+          </select>
+        </label>
+      )}
+      {reused && draft && <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">Started from your {reused} letter, with the company and role name swapped. Read every line: anything about {reused}&apos;s work or team needs rewriting for {app.company}.</p>}
 
       <button onClick={generate} disabled={loading} className="btn-primary">
         {loading ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" /> Writing…</> : draft ? "↻ Write it again" : type === "cover_letter" ? "📝 Write my cover letter" : "✉️ Write my email"}

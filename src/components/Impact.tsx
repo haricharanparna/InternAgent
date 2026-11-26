@@ -80,6 +80,16 @@ export default function Impact({ apps, onSearch }: { apps: TrackedApp[]; onSearc
   const [tEmail, setTEmail] = useState(15);
 
   useEffect(() => setUsage(readUsage()), []);
+  // Hours you logged in Skill gaps, per skill.
+  const [learning, setLearning] = useState<{ total: number; skills: [string, number][] }>({ total: 0, skills: [] });
+  useEffect(() => {
+    try {
+      const log: { skill: string; h: number }[] = JSON.parse(localStorage.getItem("internagent.learningHours") || "[]");
+      const by = new Map<string, number>();
+      for (const e of log) by.set(e.skill, (by.get(e.skill) || 0) + e.h);
+      setLearning({ total: log.reduce((n, e) => n + e.h, 0), skills: [...by.entries()].sort((a, b) => b[1] - a[1]) });
+    } catch {}
+  }, []);
 
   const applied = apps.filter((a) => a.status !== "saved" && !(a.status === "withdrawn" && !a.appliedAt));
   const heard = applied.filter((a) => ["assessment", "interview", "offer", "rejected"].includes(a.status));
@@ -157,6 +167,11 @@ export default function Impact({ apps, onSearch }: { apps: TrackedApp[]; onSearc
               <li className="border-l-2 border-blue-500 pl-3">
                 <b className="text-slate-900">{fmt(usage.emailsWritten)}</b> emails drafted · <b className="text-slate-900">{fmt(usage.plansMade)}</b> next-step plans · <b className="text-slate-900">{fmt(usage.resumesBuilt)}</b> resumes built · <b className="text-slate-900">{fmt(usage.answersPracticed)}</b> interview answers practiced
               </li>
+              {learning.total > 0 && (
+                <li className="border-l-2 border-emerald-500 pl-3 sm:col-span-3">
+                  <b className="text-slate-900">{learning.total} hour{learning.total === 1 ? "" : "s"}</b> spent learning new skills ({learning.skills.map(([s, h]) => `${s} ${h} h`).join(", ")}), logged in Skill gaps
+                </li>
+              )}
             </ul>
           </>
         )}
