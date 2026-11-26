@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { fail } from "@/lib/http";
+import { dropMissingClaims, listedOnly, softenListedSkills, unlinkUnusedSkills } from "@/lib/honesty";
+import { keywordMatch } from "@/lib/keywords";
 import { rateLimited } from "@/lib/rateLimit";
 import { generateJSON } from "@/lib/gemini";
 import { EMAIL_TYPES, type EmailDraft, type EmailType, type Opportunity, type Profile } from "@/lib/types";
@@ -71,12 +73,17 @@ export async function POST(req: Request) {
     }
     const to = recipient?.trim().slice(0, 80);
 
+    // Requirements the student's resume doesn't show (AI fit + free keyword match).
+    const km = keywordMatch({ id: "", title: o.title, company: o.company, location: o.location, url: o.url, source: "greenhouse", description: o.description || "" }, profile);
+    const missing = [...(o.missing || []), ...(km?.missing || [])];
+
     const prompt = `Write one professional internship email for a student.
 
 EMAIL TYPE: ${type}. ${GUIDE[type]}
 TO: ${to || "unknown, so greet with the placeholder [Name]"}
 ROLE: ${o.title} at ${o.company} (${o.location}), posting: ${o.url}
 POSTING DETAILS: ${(o.description || "(only the title is known)").slice(0, 1200)}
+REQUIREMENTS THE STUDENT DOESN'T SHOW: ${JSON.stringify([...new Set(missing)].slice(0, 12))}
 STUDENT NOTES: ${[o.notes?.trim(), extra?.trim()].filter(Boolean).join(" | ").slice(0, 600) || "(none)"}
 STUDENT: ${JSON.stringify({ name: profile.name, email: profile.email, major: profile.major, school: profile.school, graduationYear: profile.graduationYear, skills: profile.skills, experiences: profile.experiences.map((e) => ({ title: e.title, organization: e.organization, bullets: e.bullets })) })}
 
@@ -87,13 +94,18 @@ Return:
 
 Honesty rules (most important):
 - Use only facts from STUDENT and STUDENT NOTES. Never invent experiences, numbers, mutual contacts, conversations, interview details or anything about the company that isn't in POSTING DETAILS.
+- Skills from the skills list: only say a skill was used in an experience if that experience's bullets mention it. Don't invent where a skill came from (no "through my coursework in", "in my classes", "self-taught") unless STUDENT says so; just say you have or work with the skill.
+- Don't mention requirements the student doesn't show (REQUIREMENTS THE STUDENT DOESN'T SHOW, or anything absent from STUDENT), and never copy requirement lines from the posting into the letter. Only bring one up if STUDENT NOTES say they're learning it, and then say exactly that.
 - Never link a skill to a project unless that project's bullets mention it, and describe projects in their own words (don't upgrade "an app" to "full-stack features").
 - Don't claim what the student learned, gained or is strong at ("developed strong X skills", "passionate about") unless STUDENT says it. State what they did, and let the reader draw conclusions.
 - Anything unknown goes in [square brackets] for the student to fill in, e.g. [Name], [date of interview].
 - Sound like a real, polite student: no clichés like "I hope this email finds you well", no exaggerated enthusiasm.`;
 
     const draft = await generateJSON<EmailDraft>([{ text: prompt }], SCHEMA);
-    return NextResponse.json({ draft: { ...draft, body: formatBody(draft.body, profile.name), tips: draft.tips.slice(0, 3) } });
+    // Honesty guards on the letter: no claimed skill the resume lacks, no skill tied
+    // to an experience that didn't use it, and listed-only skills aren't "experience".
+    const body = softenListedSkills(unlinkUnusedSkills(dropMissingClaims(draft.body, missing, profile.skills), profile), listedOnly(profile));
+    return NextResponse.json({ draft: { ...draft, body: formatBody(body, profile.name), tips: (draft.tips || []).slice(0, 3) } });
   } catch (err) {
     return fail(err);
   }

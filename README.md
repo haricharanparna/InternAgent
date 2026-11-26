@@ -59,6 +59,8 @@ Job boards + SimplifyJobs ──▶ /api/jobs ──▶ keyword rank in browser 
 
 **Number guard (shared).** `src/lib/honesty.ts` compares whole numbers ("1,200" = "1200", but "2024" does not allow "20" or "4"). It runs on tailored bullets and summaries, resume-builder bullets, ✨ bullet ideas and the interview "stronger answer", and strips filler like "successfully". `npm test` covers it.
 
+**Skill guards (shared).** A sentence that ties a skill to an experience whose bullets never mention it ("your Excel skills from your survey project") loses that skill, or is dropped if the skill stood alone. In emails and cover letters, a first-person claim of a requirement your resume doesn't show ("I'm fluent in French") is removed, while plans to learn it are kept. A skill that's only on your skills list is never called "experience". These run on next-steps plans, emails, cover letters and the tailored summary.
+
 **Next steps.** `follow-up date = appliedAt + 7 days` and `days since applied` are computed on the server and given to the model as facts; the plan is regenerated whenever the stage changes.
 
 **Resume builder guards.** Skills must match what you typed (anything else is dropped; anything left out goes under "Other"). A bullet is dropped if it contains a number that isn't in your answers for that experience. Verb tense comes from your dates (present only for ongoing work). The checks panel (action verbs, bullet length, share of bullets with numbers, placeholders, about 550 words for one page) is plain code, no AI.

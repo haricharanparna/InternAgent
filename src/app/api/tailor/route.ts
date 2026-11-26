@@ -3,7 +3,7 @@ import { fail } from "@/lib/http";
 import { rateLimited } from "@/lib/rateLimit";
 import { generateJSON } from "@/lib/gemini";
 import type { Job, Profile, TailoredResume } from "@/lib/types";
-import { dropSentencesWithNewNumbers, keepKnown, onlyKnownNumbers, scrubFiller } from "@/lib/honesty";
+import { dropSentencesWithNewNumbers, keepKnown, onlyKnownNumbers, scrubFiller, unlinkUnusedSkills } from "@/lib/honesty";
 
 const MAX_DESC = 3500;
 
@@ -81,7 +81,7 @@ Return:
 
     const rewrites = new Map(out.bullets.map((b) => [`${b.exp}:${b.bullet}`, b]));
     const resume: TailoredResume = {
-      summary: scrubFiller(dropSentencesWithNewNumbers(out.summary, everything)),
+      summary: scrubFiller(unlinkUnusedSkills(dropSentencesWithNewNumbers(out.summary, everything), profile)),
       skills,
       experiences: profile.experiences.map((e, exp) => ({
         title: e.title,

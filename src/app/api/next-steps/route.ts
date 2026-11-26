@@ -3,7 +3,7 @@ import { fail } from "@/lib/http";
 import { rateLimited } from "@/lib/rateLimit";
 import { generateJSON } from "@/lib/gemini";
 import type { NextStepsPlan, Opportunity, Profile } from "@/lib/types";
-import { listedOnly, softenListedSkills } from "@/lib/honesty";
+import { listedOnly, softenListedSkills, unlinkUnusedSkills } from "@/lib/honesty";
 
 // Builds a checklist of what to do next for ONE chosen internship, based on
 // where the student is in the process (saved, applied, interview, ...).
@@ -104,14 +104,16 @@ Rules:
 - Write to the student as "you". Be warm, direct and brief.`;
 
     const out = await generateJSON<Omit<NextStepsPlan, "status" | "generatedAt">>([{ text: prompt }], SCHEMA);
+    // Honesty guards: no skill tied to an experience that didn't use it, no "experience" for listed-only skills.
+    const clean = (t: string) => softenListedSkills(unlinkUnusedSkills(t, profile), onlyListed);
     const plan: NextStepsPlan = {
-      headline: softenListedSkills(out.headline || "", onlyListed),
+      headline: clean(out.headline || ""),
       steps: (out.steps || []).slice(0, 6).map((s) => ({
-        title: softenListedSkills(s.title, onlyListed),
-        detail: softenListedSkills(s.detail, onlyListed),
+        title: clean(s.title),
+        detail: clean(s.detail) || "Make sure your resume and application show this clearly, in your own words.",
         when: datedOnlyFromFacts(s.when, factText),
       })),
-      prep: (out.prep || []).slice(0, 5).map((p) => softenListedSkills(p, onlyListed)),
+      prep: (out.prep || []).slice(0, 5).map(clean).filter(Boolean),
       suggestedEmail: out.suggestedEmail,
       status: o.status,
       generatedAt: today.toISOString(),

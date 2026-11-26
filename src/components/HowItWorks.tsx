@@ -262,7 +262,7 @@ export default function HowItWorks({ profile }: { profile: Profile | null }) {
         <P>
           The same whole-number check guards the resume builder, ✨ bullet ideas and the &quot;stronger answer&quot; in interview
           prep, so &quot;2024&quot; on your resume never lets the AI claim &quot;20%&quot; or &quot;4 people&quot;. Filler like
-          &quot;successfully&quot; and &quot;seamlessly&quot; is stripped. These checks have automated tests in the repo.
+          &quot;successfully&quot; and &quot;seamlessly&quot; is stripped. These checks have automated tests in the repo. Two more guards cover skills: a sentence that ties a skill to a project or job whose bullets never mention it loses that skill, and an email or cover letter can&apos;t claim a requirement your resume doesn&apos;t show (plans to learn it are fine).
         </P>
         <P>
           Each change is shown side by side with your original and a note on why it changed, so you can catch anything you
