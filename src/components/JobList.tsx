@@ -10,6 +10,7 @@ import { priorityOf } from "@/lib/priority";
 import { trustOf } from "@/lib/authenticity";
 import { postingFacts } from "@/lib/postingFacts";
 import { KEYS, useStored, type SavedSearch } from "@/lib/prefs";
+import { matchesSearch, parseSearch } from "@/lib/nlSearch";
 import { hourlyPay, jobFacts, skillsMentioned } from "@/lib/jobFacts";
 import { bumpUsage } from "@/lib/usage";
 import { keywordMatch } from "@/lib/keywords";
@@ -181,8 +182,9 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
+    const parsed = parseSearch(q);
     const list = jobs.filter((j) => {
-      if (q && !`${j.title} ${j.company} ${j.location}`.toLowerCase().includes(q)) return false;
+      if (q && !matchesSearch(j, parsed)) return false;
       if (category && facts.get(j.id)?.category !== category) return false;
       if (paidOnly && !facts.get(j.id)?.pay) return false;
       if (hideSaved && trackedIds.has(j.id)) return false;
@@ -274,10 +276,16 @@ export default function JobList({ profile, trackedIds, onTrack, onOpen }: Props)
           <input
             value={query}
             onChange={(e) => { setQuery(e.target.value); setShown(PAGE); }}
-            placeholder="Filter by title, company, or city"
+            placeholder={'Try "remote AI internships paying $20/hr" or a company or city'}
+            aria-describedby="search-understood"
             className="w-full rounded-md border border-slate-300 bg-surface py-2 pl-9 pr-3 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
           />
         </div>
+        {query.trim() && (
+          <p id="search-understood" className="order-last basis-full text-xs text-slate-500">
+            Understood as: {parseSearch(query).chips.map((c) => <span key={c} className="tag tag-soft mr-1">{c}</span>)}
+          </p>
+        )}
         <button onClick={findJobs} disabled={!!loading} className="btn-secondary" title="Refresh postings">↻</button>
         <button onClick={scoreWithAI} disabled={!!loading || visible.every((j) => j.fit)} className="btn-primary flex-1 sm:flex-none">
           {loading === "score" ? (

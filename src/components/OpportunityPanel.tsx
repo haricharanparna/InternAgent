@@ -232,6 +232,8 @@ function EmailWriter({ app, profile, type, setType, initialRecipient = "" }: {
 }) {
   const [recipient, setRecipient] = useState(initialRecipient);
   const [extra, setExtra] = useState("");
+  const [tone, setTone] = useState<"formal" | "conversational" | "enthusiastic">("formal");
+  const [length, setLength] = useState<"standard" | "short">("standard");
   const [draft, setDraft] = useState<EmailDraft | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -242,7 +244,7 @@ function EmailWriter({ app, profile, type, setType, initialRecipient = "" }: {
     setError("");
     try {
       const { draft } = await post<{ draft: EmailDraft }>("/api/email", {
-        profile, opportunity: toOpportunity(app), type, recipient, extra,
+        profile, opportunity: toOpportunity(app), type, recipient, extra, tone, length,
       });
       bumpUsage("emailsWritten");
       if (type === "cover_letter") markReady(app.id, "coverLetterAt");
@@ -307,6 +309,21 @@ function EmailWriter({ app, profile, type, setType, initialRecipient = "" }: {
             placeholder="e.g. we talked about their mobile app at the career fair"
             className="mt-1 w-full rounded-md border border-slate-300 bg-surface px-3 py-2 text-sm outline-none focus:border-blue-500"
           />
+        </label>
+        <label className="text-sm text-slate-700">
+          Tone
+          <select value={tone} onChange={(e) => setTone(e.target.value as typeof tone)} className="mt-1 w-full rounded-md border border-slate-300 bg-surface px-3 py-2 text-sm">
+            <option value="formal">Formal</option>
+            <option value="conversational">Conversational</option>
+            <option value="enthusiastic">Enthusiastic (but not over the top)</option>
+          </select>
+        </label>
+        <label className="text-sm text-slate-700">
+          Length
+          <select value={length} onChange={(e) => setLength(e.target.value as typeof length)} className="mt-1 w-full rounded-md border border-slate-300 bg-surface px-3 py-2 text-sm">
+            <option value="standard">Standard</option>
+            <option value="short">Short</option>
+          </select>
         </label>
       </div>
 

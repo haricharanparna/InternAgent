@@ -25,6 +25,10 @@ const Q_SCHEMA = {
         required: ["q", "kind", "why", "useThis"],
       },
     },
+    askThem: {
+      type: "array",
+      items: { type: "object", properties: { q: { type: "string" }, why: { type: "string" } }, required: ["q", "why"] },
+    },
   },
   required: ["questions"],
 };
@@ -83,9 +87,10 @@ Write 7 realistic questions this interviewer is likely to ask, in this mix:
 - 1 "gap" question about a requirement they may lack, if any; otherwise another behavioral question.
 
 For each: q, kind, why (one sentence: what the interviewer is really checking), and useThis (one sentence naming the specific experience from STUDENT that fits best, or, if none fits, an honest way to answer: a concrete plan to learn it, or the closest thing they have done. Never tell them to describe themselves with traits like "quick learner" or "passionate").
+Also return askThem: 4 thoughtful questions the student could ask the interviewer at the end, each with a one-sentence why. Base them on the POSTING (the team, the work, how success is measured, what interns learn). Don't assume facts the posting doesn't state, and skip salary or benefits questions.
 Never claim the student has done something STUDENT doesn't show. Don't invent facts about the company beyond the POSTING.`;
-      const out = await generateJSON<{ questions: InterviewQuestion[] }>([{ text: prompt }], Q_SCHEMA);
-      return NextResponse.json({ questions: (out.questions || []).slice(0, 8) });
+      const out = await generateJSON<{ questions: InterviewQuestion[]; askThem?: { q: string; why: string }[] }>([{ text: prompt }], Q_SCHEMA);
+      return NextResponse.json({ questions: (out.questions || []).slice(0, 8), askThem: (out.askThem || []).slice(0, 5) });
     }
 
     const question = body.question?.trim().slice(0, 400);

@@ -61,7 +61,9 @@ export async function POST(req: Request) {
   const limited = rateLimited(req);
   if (limited) return limited;
   try {
-    const { profile, opportunity: o, type, recipient, extra } = (await req.json()) as {
+    const { profile, opportunity: o, type, recipient, extra, tone, length } = (await req.json()) as {
+      tone?: "formal" | "conversational" | "enthusiastic";
+      length?: "standard" | "short";
       profile: Profile;
       opportunity: Opportunity;
       type: EmailType;
@@ -80,6 +82,8 @@ export async function POST(req: Request) {
     const prompt = `Write one professional internship email for a student.
 
 EMAIL TYPE: ${type}. ${GUIDE[type]}
+TONE: ${tone === "conversational" ? "conversational: warm and natural, like a polite note to someone you respect, still professional (no slang)" : tone === "enthusiastic" ? "enthusiastic: show genuine interest through specifics, not exclamation marks or superlatives (at most one exclamation mark)" : "formal: polite, direct and professional"}
+LENGTH: ${length === "short" ? (type === "cover_letter" ? "short: 150-200 words, 3 paragraphs" : "short: under 90 words") : "standard (as described for this email type)"}
 TO: ${to || "unknown, so greet with the placeholder [Name]"}
 ROLE: ${o.title} at ${o.company} (${o.location}), posting: ${o.url}
 POSTING DETAILS: ${(o.description || "(only the title is known)").slice(0, 1200)}

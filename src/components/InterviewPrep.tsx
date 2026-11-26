@@ -29,13 +29,14 @@ export default function InterviewPrep({ app, profile, onUpdate }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [open, setOpen] = useState<number | null>(0);
+  const [onlyHard, setOnlyHard] = useState(false);
 
   async function load() {
     setBusy(true);
     setError("");
     try {
-      const { questions } = await post<{ questions: InterviewQuestion[] }>({ mode: "questions", profile, opportunity: toOpportunity(app) });
-      onUpdate(app.id, { prep: { questions, answers: {}, feedback: {}, generatedAt: new Date().toISOString() } });
+      const { questions, askThem } = await post<{ questions: InterviewQuestion[]; askThem?: { q: string; why: string }[] }>({ mode: "questions", profile, opportunity: toOpportunity(app) });
+      onUpdate(app.id, { prep: { questions, askThem, answers: {}, feedback: {}, hard: [], generatedAt: new Date().toISOString() } });
       setOpen(0);
     } catch (e) {
       setError((e as Error).message);
@@ -59,19 +60,26 @@ export default function InterviewPrep({ app, profile, onUpdate }: Props) {
   }
 
   const answered = Object.keys(prep.feedback).length;
+  const hard = prep.hard || [];
+  const avg = answered ? (Object.values(prep.feedback).reduce((n, f) => n + f.score, 0) / answered).toFixed(1) : null;
+  const toggleHard = (i: number) => onUpdate(app.id, { prep: { ...prep, hard: hard.includes(i) ? hard.filter((x) => x !== i) : [...hard, i] } });
+  const order = onlyHard ? prep.questions.map((_, i) => i).filter((i) => hard.includes(i)) : prep.questions.map((_, i) => i);
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-slate-600">
-          <b className="text-slate-900">{answered}/{prep.questions.length}</b> practiced. Aim for 1–2 minutes per answer.
+          <b className="text-slate-900">{answered}/{prep.questions.length}</b> practiced{avg ? <>, average <b className="text-slate-900">{avg}/5</b></> : null}. Aim for 1–2 minutes per answer.
         </p>
+        {hard.length > 0 && (
+          <label className="flex items-center gap-1.5 text-sm text-slate-700"><input type="checkbox" checked={onlyHard} onChange={(e) => setOnlyHard(e.target.checked)} className="h-4 w-4 accent-blue-600" /> Only my hard ones ({hard.length})</label>
+        )}
         <button onClick={() => { if (confirm("Replace these questions and your practice answers?")) load(); }} disabled={busy} className="text-sm text-slate-500 underline underline-offset-2 hover:text-slate-800">
           {busy ? "Writing…" : "↻ New questions"}
         </button>
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
       <ol className="space-y-2">
-        {prep.questions.map((q, i) => (
+        {order.map((i) => { const q = prep.questions[i]; return (
           <li key={i} className="rounded-md border border-slate-200">
             <button onClick={() => setOpen(open === i ? null : i)} aria-expanded={open === i} className="flex w-full items-start gap-3 p-3 text-left">
               <span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${prep.feedback[i] ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-700"}`}>
@@ -83,6 +91,9 @@ export default function InterviewPrep({ app, profile, onUpdate }: Props) {
               </span>
               {prep.feedback[i] && <span className="shrink-0 text-xs text-slate-500">{prep.feedback[i].score}/5</span>}
             </button>
+            <div className="-mt-2 px-3 pb-2 pl-12">
+              <button onClick={() => toggleHard(i)} aria-pressed={hard.includes(i)} className={`text-xs underline underline-offset-2 ${hard.includes(i) ? "text-amber-700" : "text-slate-500"}`}>{hard.includes(i) ? "★ Marked hard: practice again" : "☆ Mark as hard"}</button>
+            </div>
             {open === i && (
               <Practice
                 q={q}
@@ -94,8 +105,18 @@ export default function InterviewPrep({ app, profile, onUpdate }: Props) {
               />
             )}
           </li>
-        ))}
+        ); })}
       </ol>
+      {prep.askThem && prep.askThem.length > 0 && (
+        <div className="rounded-md border border-slate-200 p-3">
+          <p className="text-sm font-semibold text-slate-900">Questions to ask them at the end</p>
+          <ul className="mt-2 space-y-2">
+            {prep.askThem.map((a) => (
+              <li key={a.q} className="text-sm"><span className="font-medium text-slate-800">“{a.q}”</span><span className="block text-slate-500">{a.why}</span></li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

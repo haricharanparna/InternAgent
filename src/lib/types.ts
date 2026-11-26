@@ -192,4 +192,8 @@ export type InterviewPrep = {
   answers: Record<number, string>;
   feedback: Record<number, AnswerFeedback>;
   generatedAt: string;
+  // Questions the student can ask the interviewer, from the posting.
+  askThem?: { q: string; why: string }[];
+  // Questions the student marked to practice again.
+  hard?: number[];
 };

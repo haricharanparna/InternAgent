@@ -32,6 +32,8 @@ const inDays = (n: number) => (n === 0 ? "today" : n === 1 ? "tomorrow" : n < 0 
 
 export default function Tracker({ apps, onUpdate, onRemove, onBrowse, onOpen, onAdd }: Props) {
   const [dragOver, setDragOver] = useState<Status | null>(null);
+  const [view, setView] = useState<"board" | "table">("board");
+  const [search, setSearch] = useState("");
   const [adding, setAdding] = useState(false);
   const [goal, setGoal] = useState(5);
   useEffect(() => {
@@ -69,6 +71,8 @@ export default function Tracker({ apps, onUpdate, onRemove, onBrowse, onOpen, on
   ];
 
   const events = apps.flatMap(eventsFor);
+  const q = search.trim().toLowerCase();
+  const shown = q ? apps.filter((a) => `${a.title} ${a.company} ${a.location} ${a.notes}`.toLowerCase().includes(q)) : apps;
   const upcoming = apps
     .flatMap((a) => [
       a.interviewAt && { a, label: "Interview", when: a.interviewAt },
@@ -122,6 +126,18 @@ export default function Tracker({ apps, onUpdate, onRemove, onBrowse, onOpen, on
         ))}
       </div>
 
+      <Pipeline apps={apps} />
+
+      <div className="flex flex-wrap items-center gap-2">
+        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search your applications" aria-label="Search your applications" className="field w-auto min-w-0 flex-1 py-1.5 sm:max-w-xs" />
+        <div role="group" aria-label="View" className="inline-flex overflow-hidden rounded-md border border-slate-300 text-sm">
+          {(["board", "table"] as const).map((v) => (
+            <button key={v} onClick={() => setView(v)} aria-pressed={view === v} className={`px-3 py-1.5 ${view === v ? "bg-blue-600 text-white" : "bg-surface text-slate-700"}`}>{v === "board" ? "Board" : "Table"}</button>
+          ))}
+        </div>
+        {q && <span className="text-sm text-slate-500">{shown.length} of {apps.length}</span>}
+      </div>
+
       {due.length > 0 && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           <b>Time to follow up on {due.length} application{due.length > 1 ? "s" : ""}.</b> No reply after{" "}
@@ -129,9 +145,10 @@ export default function Tracker({ apps, onUpdate, onRemove, onBrowse, onOpen, on
         </div>
       )}
 
+      {view === "table" ? <AppTable apps={shown} onUpdate={onUpdate} onOpen={onOpen} /> : (
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-7">
         {STATUSES.map((col) => {
-          const items = apps.filter((a) => a.status === col.id);
+          const items = shown.filter((a) => a.status === col.id);
           return (
             <div
               key={col.id}
@@ -158,6 +175,7 @@ export default function Tracker({ apps, onUpdate, onRemove, onBrowse, onOpen, on
           );
         })}
       </div>
+      )}
       <p className="text-xs text-slate-400">Drag cards between columns, or use the dropdown on each card. Saved only in this browser.</p>
     </section>
   );
@@ -262,5 +280,97 @@ function WeeklyGoal({ apps, goal, onGoal }: { apps: TrackedApp[]; goal: number; 
       </label>
       {pct >= 100 && <span className="text-emerald-700">Goal met 🎉</span>}
     </div>
+  );
+}
+
+// Table view: every application in one sortable-at-a-glance list.
+function AppTable({ apps, onUpdate, onOpen }: { apps: TrackedApp[]; onUpdate: (id: string, p: Partial<TrackedApp>) => void; onOpen: (id: string) => void }) {
+  if (!apps.length) return <p className="text-sm text-slate-500">No applications match.</p>;
+  const rows = [...apps].sort((a, b) => (b.appliedAt || b.savedAt).localeCompare(a.appliedAt || a.savedAt));
+  return (
+    <div className="overflow-x-auto rounded-md border border-slate-200">
+      <table className="w-full min-w-[720px] text-sm">
+        <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+          <tr>{["Company", "Role", "Stage", "Fit", "Applied", "Deadline", "Interview", "Steps", ""].map((h) => <th key={h} scope="col" className="px-3 py-2 font-semibold">{h}</th>)}</tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100">
+          {rows.map((a) => (
+            <tr key={a.id}>
+              <td className="px-3 py-2 font-medium text-slate-900">{a.company}</td>
+              <td className="max-w-[16rem] truncate px-3 py-2 text-slate-700" title={a.title}>{a.title}</td>
+              <td className="px-3 py-2">
+                <select value={a.status} onChange={(e) => onUpdate(a.id, { status: e.target.value as Status })} aria-label={`Stage for ${a.title}`} className="rounded-md border border-slate-300 bg-surface px-1.5 py-1 text-xs">
+                  {STATUSES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+                </select>
+              </td>
+              <td className="px-3 py-2 tabular-nums text-slate-700">{a.fitScore ?? "—"}</td>
+              <td className="px-3 py-2 text-slate-700">{a.appliedAt?.slice(0, 10) || "—"}</td>
+              <td className="px-3 py-2 text-slate-700">{a.deadline || "—"}</td>
+              <td className="px-3 py-2 text-slate-700">{a.interviewAt?.replace("T", " ") || "—"}</td>
+              <td className="px-3 py-2 tabular-nums text-slate-700">{a.plan ? `${(a.plan.done || []).length}/${a.plan.steps.length}` : "—"}</td>
+              <td className="px-3 py-2"><button onClick={() => onOpen(a.id)} className="text-blue-700 underline underline-offset-2">Open</button></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// Pipeline analytics: how far applications get, how many you send each week,
+// and which skills your saved postings ask for that your resume doesn't show.
+function Pipeline({ apps }: { apps: TrackedApp[] }) {
+  const sent = apps.filter((a) => a.appliedAt);
+  const stage = (ids: string[]) => sent.filter((a) => ids.includes(a.status)).length;
+  const funnel = [
+    { label: "Applied", n: sent.length },
+    { label: "Heard back", n: stage(["assessment", "interview", "offer", "rejected"]) },
+    { label: "Interview", n: stage(["interview", "offer"]) },
+    { label: "Offer", n: stage(["offer"]) },
+  ];
+  const week = 7 * 86_400_000;
+  const now = Date.now();
+  const weeks = Array.from({ length: 8 }, (_, i) => sent.filter((a) => { const t = now - new Date(a.appliedAt!).getTime(); return t >= (7 - i) * week && t < (8 - i) * week; }).length);
+  const maxWeek = Math.max(1, ...weeks);
+  const gaps = new Map<string, number>();
+  for (const a of apps) for (const m of a.missing || []) gaps.set(m, (gaps.get(m) || 0) + 1);
+  const topGaps = [...gaps.entries()].sort((x, y) => y[1] - x[1]).slice(0, 6);
+  if (!sent.length && !topGaps.length) return null;
+  return (
+    <details className="rounded-md border border-slate-200 px-4 py-3">
+      <summary className="cursor-pointer text-sm font-semibold text-slate-900">Your pipeline</summary>
+      <div className="mt-3 grid gap-6 md:grid-cols-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">How far applications get</p>
+          <ul className="mt-2 space-y-1.5">
+            {funnel.map((f, i) => (
+              <li key={f.label} className="text-sm">
+                <div className="flex justify-between"><span className="text-slate-700">{f.label}</span><span className="tabular-nums text-slate-900">{f.n}{i > 0 && funnel[i - 1].n ? <span className="text-slate-500"> ({Math.round((f.n / funnel[i - 1].n) * 100)}%)</span> : null}</span></div>
+                <div className="mt-0.5 h-1.5 overflow-hidden rounded-full bg-slate-200"><div className="h-full rounded-full bg-blue-500" style={{ width: `${funnel[0].n ? (f.n / funnel[0].n) * 100 : 0}%` }} /></div>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Applications per week (last 8)</p>
+          <div className="mt-2 flex h-20 items-end gap-1" role="img" aria-label={`Applications per week, oldest to newest: ${weeks.join(", ")}`}>
+            {weeks.map((n, i) => (
+              <div key={i} className="flex flex-1 flex-col items-center justify-end gap-0.5">
+                <span className="text-[10px] tabular-nums text-slate-500">{n || ""}</span>
+                <div className="w-full rounded-t bg-blue-500" style={{ height: `${(n / maxWeek) * 56}px`, minHeight: n ? 3 : 1, opacity: n ? 1 : 0.25 }} />
+              </div>
+            ))}
+          </div>
+          <p className="mt-1 text-[11px] text-slate-500">Oldest on the left, this week on the right.</p>
+        </div>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Most-asked skills you don&apos;t show</p>
+          {topGaps.length ? (
+            <ul className="mt-2 space-y-1 text-sm">{topGaps.map(([s, n]) => <li key={s} className="flex justify-between"><span className="text-slate-700">{s}</span><span className="tabular-nums text-slate-500">{n} posting{n === 1 ? "" : "s"}</span></li>)}</ul>
+          ) : <p className="mt-2 text-sm text-slate-500">Score your saved jobs with AI to see this.</p>}
+        </div>
+      </div>
+      <p className="mt-3 text-[11px] text-slate-500">Percentages compare each step with the one before. Small numbers swing a lot, so read them as a rough guide.</p>
+    </details>
   );
 }

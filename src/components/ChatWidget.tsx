@@ -12,6 +12,19 @@ const SUGGESTIONS = [
   "How does the fit score work?",
 ];
 
+const CHAT_KEY = "internagent.chat";
+
+// Follow-up ideas after each answer, picked by plain keyword rules on what was asked.
+const FOLLOW_UPS: [RegExp, string[]][] = [
+  [/interview|behavioral|star\b/i, ["Give me one practice question and wait for my answer", "What should I ask the interviewer?"]],
+  [/email|follow[- ]?up|thank|recruiter|message|linkedin/i, ["Make it shorter", "Write a thank-you note for after the interview"]],
+  [/cover letter/i, ["How do I make it less generic?", "What should the first sentence say?"]],
+  [/skill|learn|course|certif/i, ["Suggest a small project to prove that skill", "How long would that take to learn?"]],
+  [/resume|bullet|cv\b/i, ["How do I describe a class project?", "What's missing from my resume for software roles?"]],
+  [/qualif|eligible|apply|deadline|priorit/i, ["Which internships should I apply to first?", "What should I do right after applying?"]],
+];
+const DEFAULT_FOLLOW_UPS = ["Which internships should I apply to first?", "What skills should I learn next?"];
+
 // Tiny renderer for **bold** and "- " bullets, built from React elements (no raw HTML).
 function Rich({ text }: { text: string }) {
   const bold = (line: string) =>
@@ -36,6 +49,21 @@ export default function ChatWidget() {
   const [sending, setSending] = useState(false);
   const scroller = useRef<HTMLDivElement>(null);
   const field = useRef<HTMLTextAreaElement>(null);
+  const loaded = useRef(false);
+
+  // Keep the conversation in this browser so it's still there next visit.
+  useEffect(() => {
+    try { setMessages(JSON.parse(localStorage.getItem(CHAT_KEY) || "[]")); } catch {}
+    loaded.current = true;
+  }, []);
+  useEffect(() => {
+    if (!loaded.current) return;
+    try { localStorage.setItem(CHAT_KEY, JSON.stringify(messages.slice(-30))); } catch {}
+  }, [messages]);
+
+  const lastUser = [...messages].reverse().find((m) => m.role === "user")?.text || "";
+  const followUps = FOLLOW_UPS.find(([re]) => re.test(lastUser))?.[1] || DEFAULT_FOLLOW_UPS;
+  const last = messages[messages.length - 1];
 
   useEffect(() => {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: "smooth" });
@@ -85,9 +113,14 @@ export default function ChatWidget() {
                 <p className="text-xs text-white/80">Ask about internships, interviews, emails…</p>
               </div>
             </div>
+            <div className="flex items-center gap-1">
+            {messages.length > 0 && (
+              <button onClick={() => setMessages([])} className="rounded-lg px-2 py-1 text-xs font-medium text-white/90 hover:bg-white/15" title="Start a new conversation (clears this one)">New chat</button>
+            )}
             <button onClick={() => setOpen(false)} aria-label="Close assistant" className="rounded-lg p-1.5 text-white/90 hover:bg-white/15">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M6 6l12 12M18 6 6 18" /></svg>
             </button>
+            </div>
           </div>
 
           <div ref={scroller} className="flex-1 space-y-3 overflow-y-auto p-4" aria-live="polite">
@@ -120,6 +153,14 @@ export default function ChatWidget() {
                 </div>
               </div>
             ))}
+
+            {!sending && last?.role === "model" && !last.text.startsWith("⚠️") && (
+              <div className="flex flex-wrap gap-1.5" aria-label="Suggested follow-up questions">
+                {followUps.map((s) => (
+                  <button key={s} onClick={() => send(s)} className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-left text-xs font-medium text-blue-700 hover:bg-blue-100">{s}</button>
+                ))}
+              </div>
+            )}
 
             {sending && (
               <div className="flex gap-1 rounded-2xl rounded-tl-md bg-slate-100 px-4 py-3 w-fit" aria-label="Assistant is typing">
