@@ -37,6 +37,8 @@ export type TrackedApp = {
   // Optional dates the student sets (ISO strings).
   interviewAt?: string;
   deadline?: string;
+  // Which resume the student sent: their original, or a tailored version (by when it was made).
+  resumeUsed?: { kind: "original" | "tailored"; at?: string };
 };
 
 export const toOpportunity = (a: TrackedApp): Opportunity => ({

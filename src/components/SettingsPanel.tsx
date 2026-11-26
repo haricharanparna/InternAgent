@@ -131,6 +131,7 @@ export default function SettingsPanel() {
                 <input type="file" accept="application/json,.json" className="sr-only" onChange={(e) => e.target.files?.[0] && importData(e.target.files[0])} />
               </label>
             </div>
+            <button onClick={() => { try { localStorage.removeItem("internagent.onboarded"); window.dispatchEvent(new CustomEvent("internagent:prefs", { detail: "internagent.onboarded" })); } catch {} }} className="mt-2 w-full rounded-md py-1.5 text-xs text-slate-600 hover:bg-slate-50">Show the getting-started guide again</button>
             <button onClick={clearData} className="mt-2 w-full rounded-md py-1.5 text-xs text-rose-700 hover:bg-rose-50">Delete all my data from this browser</button>
           </div>
         </div>

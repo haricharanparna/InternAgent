@@ -290,9 +290,9 @@ function AppTable({ apps, onUpdate, onOpen }: { apps: TrackedApp[]; onUpdate: (i
   const rows = [...apps].sort((a, b) => (b.appliedAt || b.savedAt).localeCompare(a.appliedAt || a.savedAt));
   return (
     <div className="overflow-x-auto rounded-md border border-slate-200">
-      <table className="w-full min-w-[720px] text-sm">
+      <table className="w-full min-w-[800px] text-sm">
         <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-          <tr>{["Company", "Role", "Stage", "Fit", "Applied", "Deadline", "Interview", "Steps", ""].map((h) => <th key={h} scope="col" className="px-3 py-2 font-semibold">{h}</th>)}</tr>
+          <tr>{["Company", "Role", "Stage", "Fit", "Applied", "Deadline", "Interview", "Steps", "Resume", ""].map((h) => <th key={h} scope="col" className="px-3 py-2 font-semibold">{h}</th>)}</tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
           {rows.map((a) => (
@@ -309,6 +309,7 @@ function AppTable({ apps, onUpdate, onOpen }: { apps: TrackedApp[]; onUpdate: (i
               <td className="px-3 py-2 text-slate-700">{a.deadline || "—"}</td>
               <td className="px-3 py-2 text-slate-700">{a.interviewAt?.replace("T", " ") || "—"}</td>
               <td className="px-3 py-2 tabular-nums text-slate-700">{a.plan ? `${(a.plan.done || []).length}/${a.plan.steps.length}` : "—"}</td>
+              <td className="px-3 py-2 text-slate-700">{a.resumeUsed ? (a.resumeUsed.kind === "original" ? "Original" : `Tailored ${a.resumeUsed.at?.slice(5, 10).replace("-", "/")}`) : "—"}</td>
               <td className="px-3 py-2"><button onClick={() => onOpen(a.id)} className="text-blue-700 underline underline-offset-2">Open</button></td>
             </tr>
           ))}

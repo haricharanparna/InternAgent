@@ -10,6 +10,7 @@ import Contacts from "./Contacts";
 import { printLetter } from "@/lib/resumePdf";
 import { markReady } from "@/lib/readiness";
 import { ReadinessCard } from "./ReadinessCard";
+import { CompanyResearch, ResumeUsed } from "./ApplyKit";
 
 type Props = {
   app: TrackedApp;
@@ -50,7 +51,8 @@ export default function OpportunityPanel({ app, profile, onUpdate, onClose }: Pr
   const [to, setTo] = useState({ name: "", n: 0 });
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    // Escape closes the tailored resume first when it is open on top.
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !document.querySelector("[data-tailor-panel]") && onClose();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
@@ -109,7 +111,11 @@ export default function OpportunityPanel({ app, profile, onUpdate, onClose }: Pr
           ) : tab === "interview" ? (
             <InterviewPrep app={app} profile={profile} onUpdate={onUpdate} />
           ) : tab === "steps" ? (
-            <Steps app={app} profile={profile} onUpdate={onUpdate} onWriteEmail={writeEmail} />
+            <div className="space-y-8">
+              <Steps app={app} profile={profile} onUpdate={onUpdate} onWriteEmail={writeEmail} />
+              <ResumeUsed app={app} job={appAsJob(app)} profile={profile} onUpdate={onUpdate} />
+              <CompanyResearch app={app} />
+            </div>
           ) : (
             <EmailWriter key={to.n} app={app} profile={profile} type={emailType} setType={setEmailType} initialRecipient={to.name} />
           )}

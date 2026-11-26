@@ -5,6 +5,7 @@ import { downloadResumePdf } from "@/lib/resumePdf";
 import { downloadDocx, tailoredResumeParas } from "@/lib/docx";
 import { bumpUsage } from "@/lib/usage";
 import { markReady } from "@/lib/readiness";
+import { saveVersion } from "@/lib/resumeVersions";
 import type { Job, Profile, TailoredResume } from "@/lib/types";
 
 type Props = { profile: Profile; job: Job; onClose: () => void };
@@ -24,9 +25,11 @@ export default function TailorPanel({ profile, job, onClose }: Props) {
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
+        if (cancelled) return; // a cancelled run (closed panel, or React's dev double-run) records nothing
         bumpUsage("resumesTailored");
         markReady(job.id, "tailoredAt");
-        if (!cancelled) setResume(data.resume);
+        saveVersion(job.id, data.resume, profile);
+        setResume(data.resume);
       } catch (e) {
         if (!cancelled) setError((e as Error).message || "Could not tailor resume.");
       }
@@ -43,7 +46,7 @@ export default function TailorPanel({ profile, job, onClose }: Props) {
   const changed = resume?.experiences.flatMap((e) => e.bullets).filter((b) => b.tailored !== b.original).length ?? 0;
 
   return (
-    <div className="animate-fade-in fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/40 p-4 backdrop-blur-sm sm:p-8" onClick={onClose}>
+    <div data-tailor-panel className="animate-fade-in fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/40 p-4 backdrop-blur-sm sm:p-8" onClick={onClose}>
       <div className="animate-pop-in w-full max-w-5xl overflow-hidden rounded-3xl bg-surface shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 bg-slate-50 p-5">
           <div className="min-w-0">
